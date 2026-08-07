@@ -1,0 +1,67 @@
+name: Bug report
+description: Something behaves differently than it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: the state table only holds **permitted** traffic, so
+        blocked connections never show up — that is a known limitation, not a
+        bug. The same goes for history disappearing on restart. Both are listed
+        in the README, and what may get built later is in
+        [ROADMAP.md](../blob/HEAD/ROADMAP.md).
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: And what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce
+      placeholder: |
+        1. Open the Connections section
+        2. …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: data
+    attributes:
+      label: Does it also happen with mock data?
+      description: "`MOCK=1` in .env runs the interface on generated data."
+      options:
+        - Not tried
+        - "Yes — reproduces with MOCK=1"
+        - "No — only against a real OPNsense"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Statedash version
+      description: The image tag, or the commit you built from.
+      placeholder: "ghcr.io/gera-corp-org/statedash:1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: opnsense
+    attributes:
+      label: OPNsense version
+      placeholder: "26.7.1_1-amd64"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Container log
+      description: >
+        `docker logs statedash`. It is rendered as code, no backticks needed.
+        **Remove your API key, secret and any address you would rather not
+        publish** — the log carries request URLs.
+      render: text

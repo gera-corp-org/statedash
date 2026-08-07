@@ -1,0 +1,20 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Licensing and commercial use
+    url: https://github.com/gera-corp-org/statedash/blob/HEAD/LICENSING.md
+    about: >
+      Statedash is AGPL-3.0. Shipping it inside a closed-source or permissively
+      licensed product needs a separate commercial licence — the terms and the
+      contact address are here, not in the issue tracker.
+
+  - name: Before opening a pull request
+    url: https://github.com/gera-corp-org/statedash/blob/HEAD/CONTRIBUTING.md
+    about: >
+      Style, how to run against mock data, and the sign-off every commit needs.
+      An automated check enforces the sign-off, so it is worth reading first.
+
+  - name: Security issue
+    url: https://github.com/gera-corp-org/statedash/security/advisories/new
+    about: >
+      Statedash holds an OPNsense API key and sits next to a firewall. Report
+      anything security-relevant privately here rather than as a public issue.

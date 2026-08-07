@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statedash — активные хосты</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232a78d6' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3.5v17'/><path d='M3 8.5h6.4'/><path d='M7.6 6.4l2 2.1-2 2.1'/><path d='M14.6 15.5H21'/><path d='M19.2 13.4l2 2.1-2 2.1'/></svg>">
+</head>
+<body>
+<div class="layout">
+<aside class="sidenav">
+  <div class="side-brand"><svg class="side-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v17"/><path d="M3 8.5h6.4"/><path d="M7.6 6.4l2 2.1-2 2.1"/><path d="M14.6 15.5H21"/><path d="M19.2 13.4l2 2.1-2 2.1"/></svg><span class="side-label">Statedash</span></div>
+  <nav class="side-menu">
+    <a class="side-item active" href="#" data-view="hosts" data-i18n-title="nav.hosts">
+      <svg class="side-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2" y="4" width="20" height="13" rx="2"/>
+        <path d="M6 11h3l1.5-2.5L13 13l1.5-2h3.5"/>
+        <path d="M8 21h8M12 17v4"/>
+      </svg>
+      <span class="side-label" data-i18n="nav.hosts">Активные хосты</span>
+    </a>
+    <a class="side-item" href="#" data-view="wg" data-i18n-title="nav.wg">
+      <svg class="side-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+      <span class="side-label" data-i18n="nav.wg">VPN · WireGuard</span>
+    </a>
+    <a class="side-item" href="#" data-view="rules" data-i18n-title="nav.rules">
+      <svg class="side-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 5h18l-7 8v6l-4-2v-4z"/>
+      </svg>
+      <span class="side-label" data-i18n="nav.rules">Правила</span>
+    </a>
+    <a class="side-item" href="#" data-view="settings" data-i18n-title="nav.settings">
+      <svg class="side-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10.6 3.09V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 16.11 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 20.43 9v.09A1.65 1.65 0 0 0 21.91 10.6H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      <span class="side-label" data-i18n="nav.settings">Настройки</span>
+    </a>
+  </nav>
+  <button id="side-collapse" class="side-item side-collapse" type="button" data-i18n-title="nav.collapse.title">
+    <svg class="side-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 6l-6 6 6 6"/>
+    </svg>
+    <span class="side-label" data-i18n="nav.collapse">Свернуть</span>
+  </button>
+  <div class="side-foot"><span class="side-label">OPNsense</span></div>
+</aside>
+<div class="viz-root">
+  <header class="topbar">
+    <div class="top-stats">
+      <span class="top-stat"><span class="key key-down"></span><span data-i18n="top.down">Загрузка</span> <b id="tile-down">—</b></span>
+      <span class="top-stat"><span class="key key-up"></span><span data-i18n="top.up">Отдача</span> <b id="tile-up">—</b></span>
+      <span class="top-stat"><span data-i18n="top.hosts">Хостов</span> <b id="tile-hosts">—</b></span>
+    </div>
+    <div class="topbar-right">
+      <span id="mock-badge" class="badge" data-i18n="badge.mock" hidden>тестовые данные</span>
+      <button id="iface-badge" class="dropdown-btn iface-topbar" type="button" data-i18n-title="top.ifaces.title"></button>
+      <button id="lang-btn" class="lang-btn" type="button" title="Language">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/>
+        </svg>
+        <span id="lang-current">RU</span>
+      </button>
+      <button id="theme-btn" class="theme-btn" type="button" data-i18n-title="theme.title" title="Переключить тему">◐</button>
+      <button id="logout-btn" class="theme-btn" type="button" data-i18n-title="top.logout" hidden>
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="error-banner" class="error-banner" hidden></div>
+
+  <div id="view-hosts" class="view">
+  <section class="card chart-card">
+    <div class="card-head">
+      <h2 data-i18n="chart.title">Пропускная способность</h2>
+      <div class="card-head-right">
+        <div class="legend">
+          <span class="legend-item"><span class="key key-down"></span><span data-i18n="top.down">Загрузка</span></span>
+          <span class="legend-item"><span class="key key-up"></span><span data-i18n="top.up">Отдача</span></span>
+        </div>
+        <button id="chart-toggle" class="link-btn" type="button">Скрыть</button>
+      </div>
+    </div>
+    <div class="chart-wrap" id="main-chart-wrap">
+      <canvas id="main-chart"></canvas>
+      <div id="chart-tip" class="tooltip" hidden></div>
+    </div>
+  </section>
+
+  <section class="card table-card">
+    <div class="card-head">
+      <h2 data-i18n="hosts.title">Хосты</h2>
+      <div class="card-head-right">
+        <label class="unit-label"><span data-i18n="hosts.speed">Скорость</span>
+          <select id="rate-unit" class="unit-select">
+            <option value="kbit" data-i18n="unit.kbit">Кбит/с — биты в секунду</option>
+            <option value="kbyte" data-i18n="unit.kbyte">КБ/с — байты в секунду</option>
+          </select>
+        </label>
+        <input id="search" class="search" type="search" data-i18n-ph="search.ph" placeholder="Фильтр: имя, IP, MAC…">
+        <button id="hosts-cols-btn" class="cols-btn" type="button"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg><span data-i18n="cols.btn">Колонки</span></button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="hosts-table">
+        <colgroup>
+          <col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col>
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="col-host sortable" data-col="name" data-sort="name" draggable="true"><span class="th-label" data-i18n="col.name">Имя хоста</span></th>
+            <th class="col-num sortable" data-col="down" data-sort="down" draggable="true"><span class="th-label">Приём [Кбит/с]</span></th>
+            <th class="col-num sortable" data-col="up" data-sort="up" draggable="true"><span class="th-label">Передача [Кбит/с]</span></th>
+            <th class="col-num sortable" data-col="conns" data-sort="conns" draggable="true"><span class="th-label" data-i18n="col.conns">Подключения</span></th>
+            <th class="col-ip sortable" data-col="ip" data-sort="ip" draggable="true"><span class="th-label" data-i18n="col.ip">Адрес IPv4</span></th>
+            <th class="col-mac sortable" data-col="mac" data-sort="mac" draggable="true"><span class="th-label" data-i18n="col.mac">Адрес MAC</span></th>
+            <th class="sortable" data-col="addr" data-sort="addr" draggable="true"><span class="th-label" data-i18n="col.addr">Тип адреса</span></th>
+            <th class="sortable" data-col="start" data-sort="start" draggable="true"><span class="th-label" data-i18n="col.start">Начало</span></th>
+            <th class="sortable" data-col="uptime" data-sort="uptime" draggable="true"><span class="th-label" data-i18n="col.uptime">В сети</span></th>
+            <th class="sortable" data-col="idle" data-sort="idle" draggable="true"><span class="th-label" data-i18n="col.idle">Бездействие</span></th>
+            <th class="sortable" data-col="iface" data-sort="iface" draggable="true"><span class="th-label" data-i18n="col.iface">Интерфейс</span></th>
+            <th class="sortable" data-col="vendor" data-sort="vendor" draggable="true"><span class="th-label" data-i18n="col.vendor">Производитель</span></th>
+            <th class="sortable" data-col="peer" data-sort="peer" draggable="true"><span class="th-label" data-i18n="col.peer">Топ-собеседник</span></th>
+            <th class="col-num sortable" data-col="dests" data-sort="dests" draggable="true"><span class="th-label" data-i18n="col.dests">Назначений</span></th>
+            <th class="col-num sortable" data-col="peakdown" data-sort="peakdown" draggable="true"><span class="th-label" data-i18n="col.peakdown">Пик приёма</span></th>
+            <th class="col-num sortable" data-col="peakup" data-sort="peakup" draggable="true"><span class="th-label" data-i18n="col.peakup">Пик передачи</span></th>
+            <th class="col-spark" data-col="spark" draggable="true"><span class="th-label" data-i18n="col.spark">Активность</span></th>
+            <th class="col-num sortable" data-col="tdown" data-sort="total_down" draggable="true"><span class="th-label" data-i18n="col.tdown">Принято [МБ]</span></th>
+            <th class="col-num sortable" data-col="tup" data-sort="total_up" draggable="true"><span class="th-label" data-i18n="col.tup">Передано [МБ]</span></th>
+            <th class="col-filler" data-col="filler"></th>
+          </tr>
+        </thead>
+        <tbody id="hosts-body"></tbody>
+      </table>
+      <div id="empty-note" class="empty-note" data-i18n="hosts.empty" hidden>Пока никого не видно — ждём данные…</div>
+    </div>
+  </section>
+
+  <footer class="foot"><span data-i18n="foot.a">обновление каждые</span> <span id="poll-int">2</span> <span data-i18n="foot.b">с · клик по строке — детали хоста</span></footer>
+  </div>
+
+  <div id="view-wg" class="view" hidden>
+    <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="wg.title">WireGuard — пиры</h2>
+        <button id="wg-cols-btn" class="cols-btn" type="button"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg><span data-i18n="cols.btn">Колонки</span></button>
+      </div>
+      <div id="wg-error" class="error-banner" hidden></div>
+      <div class="table-wrap">
+        <table id="wg-table">
+          <colgroup><col><col><col><col><col><col><col><col><col><col></colgroup>
+          <thead>
+            <tr>
+              <th data-col="name"><span class="th-label" data-i18n="wg.name">Имя</span></th>
+              <th data-col="status"><span class="th-label" data-i18n="wg.status">Статус</span></th>
+              <th data-col="endpoint"><span class="th-label">Endpoint</span></th>
+              <th data-col="ips"><span class="th-label" data-i18n="wg.ips">Разрешённые IP</span></th>
+              <th data-col="hs"><span class="th-label" data-i18n="wg.hs">Хендшейк</span></th>
+              <th class="col-num" data-col="rx"><span class="th-label" data-i18n="conn.rx">Приём</span></th>
+              <th class="col-num" data-col="tx"><span class="th-label" data-i18n="conn.tx">Передача</span></th>
+              <th class="col-num" data-col="trx"><span class="th-label" data-i18n="wg.trx">Всего ↓</span></th>
+              <th class="col-num" data-col="ttx"><span class="th-label" data-i18n="wg.ttx">Всего ↑</span></th>
+              <th class="col-filler" data-col="filler"></th>
+            </tr>
+          </thead>
+          <tbody id="wg-body"></tbody>
+        </table>
+        <div id="wg-empty" class="empty-note" data-i18n="wg.empty" hidden>Пиров нет или данные ещё не пришли…</div>
+      </div>
+    </section>
+    <footer class="foot" data-i18n="wg.foot">обновление каждые 10 с · «в сети» — хендшейк моложе 3 минут</footer>
+  </div>
+
+  <div id="view-rules" class="view" hidden>
+    <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="rules.title">Карта трафика: откуда → правило → куда</h2>
+        <div class="card-head-right">
+          <input id="rules-search" class="search" type="search" data-i18n-ph="rules.search.ph" placeholder="Фильтр: правило, адрес…">
+        </div>
+      </div>
+      <div id="rules-empty" class="empty-note" data-i18n="rules.empty" hidden>Данных пока нет — ждём опрос состояний…</div>
+      <details class="rules-help">
+        <summary data-i18n="rules.help.title">Как читается путь пакета</summary>
+        <ol>
+          <li data-i18n="rules.help.1">Проброс портов (Destination NAT) — для входящих: адрес назначения меняется на внутренний.</li>
+          <li data-i18n="rules.help.2">Правила фильтрации (Rules) — пропустить или заблокировать; их имена и показаны ниже.</li>
+          <li data-i18n="rules.help.3">Исходящий NAT (Source NAT) — на выходе адрес источника меняется на адрес файрвола.</li>
+          <li data-i18n="rules.help.4">Схема читается слева направо: сеть-источник → правило → сеть-назначение. Пунктир — на этом пути подменяется адрес (NAT). Наведение подсвечивает только пути этого узла, клик по правилу открывает его соединения.</li>
+          <li data-i18n="rules.help.5">Сети, в которых есть адрес самого OPNsense — интерфейсы, туннели WireGuard и сети из настроенных правил, — собираются в группу «Сети OPNsense» автоматически; сети на WAN-интерфейсах выносятся в отдельную группу «Сети WAN». Под каждой подсетью подписан интерфейс, на котором она работает (берётся из таблицы ARP и из туннелей WireGuard).</li>
+          <li data-i18n="rules.help.6">У каждого правила подписаны порты назначения, по которым сейчас идут соединения (наведите — покажет все порты со службами).</li>
+          <li data-i18n="rules.help.7">Схема повторяет путь пакета: подмена назначения (проброс порта) идёт до правил, подмена источника (исходящий NAT) — после. Если подмены нет, связь просто минует эту колонку.</li>
+        </ol>
+        <p class="set-hint" data-i18n="rules.help.note">Показано фактическое поведение из таблицы состояний: какие правила реально пропускают трафик и где происходит подмена адресов. Сами конфигурации правил через API OPNsense недоступны.</p>
+      </details>
+      <div id="rule-map" class="rule-map"></div>
+    </section>
+    <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="cfg.title">Настроенные правила</h2>
+        <div class="card-head-right">
+          <select id="cfg-kind" class="unit-select">
+            <option value="filter" data-i18n="cfg.kind.filter">Фильтрация</option>
+            <option value="snat" data-i18n="cfg.kind.snat">Исходящий NAT</option>
+          </select>
+          <label class="conn-filter"><input type="checkbox" id="cfg-hide-auto" checked><span data-i18n="cfg.hideauto">Скрыть автоправила</span></label>
+        </div>
+      </div>
+      <div id="cfg-error" class="set-warn" hidden></div>
+      <div id="cfg-list" class="cfg-list"></div>
+    </section>
+
+    <footer class="foot" data-i18n="rules.foot">строится по таблице состояний pf · обновление каждые 10 с · клик по правилу — его соединения</footer>
+  </div>
+
+  <div id="view-settings" class="view" hidden>
+    <section class="card">
+      <div class="card-head"><h2 data-i18n="set.ui">Интерфейс</h2></div>
+      <div class="set-grid">
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.lang">Язык</span>
+          <select id="set-lang" class="unit-select">
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.theme">Тема</span>
+          <select id="set-theme" class="unit-select">
+            <option value="system" data-i18n="set.theme.system">Системная</option>
+            <option value="light" data-i18n="set.theme.light">Светлая</option>
+            <option value="dark" data-i18n="set.theme.dark">Тёмная</option>
+          </select>
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.units">Единицы скорости</span>
+          <select id="set-units" class="unit-select">
+            <option value="kbit" data-i18n="unit.kbit">Кбит/с — биты в секунду</option>
+            <option value="kbyte" data-i18n="unit.kbyte">КБ/с — байты в секунду</option>
+          </select>
+        </label>
+        <label class="set-row set-check">
+          <input type="checkbox" id="set-chart">
+          <span class="set-label" data-i18n="set.chart">Показывать график пропускной способности</span>
+        </label>
+        <label class="set-row set-check">
+          <input type="checkbox" id="set-nav">
+          <span class="set-label" data-i18n="set.nav">Свёрнутое левое меню</span>
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.timefmt">Формат времени</span>
+          <select id="set-timefmt" class="unit-select">
+            <option value="24" data-i18n="set.timefmt.24">24 часа (14:30)</option>
+            <option value="12" data-i18n="set.timefmt.12">12 часов (2:30 PM)</option>
+            <option value="auto" data-i18n="set.timefmt.auto">Как в языке интерфейса</option>
+          </select>
+        </label>
+        <label class="set-row set-check">
+          <input type="checkbox" id="set-kill-confirm">
+          <span class="set-label" data-i18n="set.killconfirm">Спрашивать подтверждение при разрыве соединения</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="set.poll">Опрос OPNsense</h2>
+        <span class="set-hint" data-i18n="set.poll.hint">применяется сразу, перезапуск не нужен</span>
+      </div>
+      <div class="set-grid">
+        <div class="set-row">
+          <span class="set-label" data-i18n="set.ifaces">Интерфейсы</span>
+          <button type="button" id="set-ifaces-btn" class="dropdown-btn"></button>
+        </div>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.poll_seconds">Период опроса скоростей, с</span>
+          <input type="number" id="set-poll" class="search" min="1" max="60" step="0.5">
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.states_seconds">Период опроса соединений и WireGuard, с</span>
+          <input type="number" id="set-states" class="search" min="2" max="600" step="1">
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.enrich_seconds">Период обновления имён (ARP/DHCP/DNS), с</span>
+          <input type="number" id="set-enrich" class="search" min="10" max="3600" step="10">
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.history">Точек истории графиков</span>
+          <input type="number" id="set-history" class="search" min="60" max="5000" step="10">
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.spark">Точек спарклайна</span>
+          <input type="number" id="set-spark" class="search" min="10" max="600" step="5">
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.idle">Держать молчащий хост в списке, с</span>
+          <input type="number" id="set-idle" class="search" min="60" max="86400" step="60">
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.connlimit">Лимит соединений на хост</span>
+          <input type="number" id="set-connlimit" class="search" min="50" max="5000" step="50">
+        </label>
+        <label class="set-row set-check">
+          <input type="checkbox" id="set-swap">
+          <span class="set-label" data-i18n="set.swap">Поменять местами приём и передачу</span>
+        </label>
+      </div>
+      <div class="set-actions">
+        <button id="set-save" class="cols-btn" type="button" data-i18n="set.save">Сохранить</button>
+        <button id="set-defaults" class="link-btn" type="button" data-i18n="set.defaults">Вернуть значения из .env</button>
+        <span id="set-status" class="set-hint"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2 data-i18n="set.view">Вид таблиц</h2></div>
+      <div class="set-actions">
+        <button id="set-reset-cols" class="cols-btn" type="button" data-i18n="set.reset.cols">Сбросить колонки и сортировки</button>
+        <button id="set-reset-all" class="link-btn" type="button" data-i18n="set.reset.all">Сбросить все локальные настройки</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="set.access">Доступ</h2>
+        <span class="set-hint" id="set-auth-state"></span>
+      </div>
+      <div class="set-grid">
+        <label class="set-row" id="set-current-row" hidden>
+          <span class="set-label" data-i18n="set.pw.current">Текущий пароль</span>
+          <input type="password" id="set-pw-current" class="search" autocomplete="current-password">
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.pw.new">Новый пароль <em>(от 6 символов)</em></span>
+          <input type="password" id="set-pw-new" class="search" autocomplete="new-password">
+        </label>
+      </div>
+      <div class="set-grid" style="margin-top:12px">
+        <div class="set-row">
+          <span class="set-label" data-i18n="set.listen">Веб-интерфейс слушает</span>
+          <select id="set-listen-select" class="unit-select">
+            <option value="127.0.0.1:8080" data-i18n="set.listen.only">Только эта машина (127.0.0.1)</option>
+            <option value="0.0.0.0:8080" data-i18n="set.listen.all">Вся сеть (0.0.0.0)</option>
+          </select>
+        </div>
+        <div class="set-row">
+          <span class="set-label" data-i18n="set.listen.now">Сейчас работает</span>
+          <span id="set-listen-now" class="set-hint"></span>
+        </div>
+      </div>
+      <div class="set-warn" id="set-listen-pending" hidden></div>
+      <div class="set-warn" id="set-listen-warn" hidden data-i18n="set.listen.warn">⚠ Интерфейс открыт для всей сети, а пароль не задан — любой в сети видит ваш мониторинг.</div>
+      <div class="set-actions">
+        <button id="set-pw-save" class="cols-btn" type="button" data-i18n="set.pw.save">Установить пароль</button>
+        <button id="set-pw-off" class="link-btn" type="button" data-i18n="set.pw.off" hidden>Отключить пароль</button>
+        <button id="set-logout" class="link-btn" type="button" data-i18n="set.logout" hidden>Выйти</button>
+        <span id="set-auth-status" class="set-hint"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="set.conn">Подключение</h2>
+        <span class="set-hint" data-i18n="set.cred.hint">ключи хранятся на сервере и наружу не отдаются</span>
+      </div>
+      <dl class="kv" id="set-env"></dl>
+      <div class="set-grid" style="margin-top:12px">
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.cred.url">Адрес OPNsense</span>
+          <input type="text" id="set-url" class="search" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="set-row set-check">
+          <input type="checkbox" id="set-tls">
+          <span class="set-label" data-i18n="set.cred.tls">Проверять TLS-сертификат</span>
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.cred.key">Новый API-ключ</span>
+          <input type="text" id="set-key" class="search" autocomplete="off" placeholder="">
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.cred.secret">Новый API-секрет</span>
+          <input type="password" id="set-secret" class="search" autocomplete="off">
+        </label>
+      </div>
+      <div class="set-warn" data-i18n="set.cred.warn">⚠ Приложение отправляет API-ключ на указанный адрес — меняй его только на адрес своего файрвола.</div>
+      <div class="set-actions">
+        <button id="set-cred-save" class="cols-btn" type="button" data-i18n="set.cred.save">Сохранить ключи</button>
+        <span id="set-cred-status" class="set-hint"></span>
+      </div>
+    </section>
+  </div>
+</div>
+</div>
+
+<!-- нижняя панель деталей -->
+<div id="detail-panel" class="detail-panel" hidden>
+  <div id="detail-resizer" class="detail-resizer" data-i18n-title="detail.resize.title" title="Потяни, чтобы изменить высоту; двойной клик — сброс"></div>
+  <div class="detail-head">
+    <div class="detail-title-box">
+      <span id="detail-title" class="detail-title"></span>
+      <span id="detail-sub" class="detail-sub"></span>
+    </div>
+    <nav class="tabs" id="detail-tabs">
+      <button class="tab active" data-tab="general" type="button" data-i18n="tab.general">Обзор</button>
+      <button class="tab" data-tab="conns" type="button" data-i18n="tab.conns">Соединения</button>
+      <button class="tab" data-tab="histo" type="button" data-i18n="tab.histo">Гистограмма</button>
+    </nav>
+    <button id="detail-close" class="detail-close" type="button" data-i18n-title="detail.close.title" title="Закрыть">✕</button>
+  </div>
+  <div class="detail-body">
+    <div id="tab-general" class="tab-pane">
+      <dl class="kv" id="general-kv"></dl>
+    </div>
+    <div id="tab-conns" class="tab-pane" hidden>
+      <div class="conn-toolbar">
+        <label class="conn-filter"><input type="checkbox" id="conn-hide-fw"><span data-i18n="conn.hidefw">Скрыть соединения с файрволом</span></label>
+        <label class="conn-filter"><input type="checkbox" id="conn-hide-local"><span data-i18n="conn.hidelocal">Скрыть локальные соединения</span></label>
+        <button id="conn-cols-btn" class="cols-btn" type="button"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg><span data-i18n="cols.btn">Колонки</span></button></div>
+      <div id="conn-holder" class="conn-holder conn-empty">Загружаю…</div>
+    </div>
+    <div id="tab-histo" class="tab-pane" hidden>
+      <div class="histo-head">
+        <div class="legend">
+          <span class="legend-item"><span class="key key-down"></span><span data-i18n="top.down">Загрузка</span></span>
+          <span class="legend-item"><span class="key key-up"></span><span data-i18n="top.up">Отдача</span></span>
+        </div>
+      </div>
+      <div class="chart-wrap histo-wrap">
+        <canvas id="histo-chart"></canvas>
+        <div id="histo-tip" class="tooltip" hidden></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

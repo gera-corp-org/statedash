@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statedash</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232a78d6' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3.5v17'/><path d='M3 8.5h6.4'/><path d='M7.6 6.4l2 2.1-2 2.1'/><path d='M14.6 15.5H21'/><path d='M19.2 13.4l2 2.1-2 2.1'/></svg>">
+</head>
+<body>
+<div class="viz-root login-root">
+  <div class="login-tools">
+    <button id="lang-btn" class="lang-btn" type="button">
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/>
+      </svg>
+      <span id="lang-current">RU</span>
+    </button>
+    <button id="theme-btn" class="theme-btn" type="button">◐</button>
+  </div>
+  <form class="card login-card" id="login-form">
+    <div class="login-brand"><svg class="side-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v17"/><path d="M3 8.5h6.4"/><path d="M7.6 6.4l2 2.1-2 2.1"/><path d="M14.6 15.5H21"/><path d="M19.2 13.4l2 2.1-2 2.1"/></svg><span>Statedash</span></div>
+    <label class="login-field">
+      <span class="set-label" id="login-label">Пароль</span>
+      <input type="password" id="login-password" class="search" autocomplete="current-password" autofocus>
+    </label>
+    <button type="submit" class="cols-btn login-submit" id="login-submit">Войти</button>
+    <div class="login-error" id="login-error" hidden></div>
+  </form>
+</div>
+<script>
+const KEY_LANG = "statedash-lang";
+const KEY_THEME = "statedash-theme";
+const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+
+const STRINGS = {
+  ru: { label: "Пароль", submit: "Войти", wrong: "Неверный пароль",
+        fail: "Не удалось войти: ", theme: "Переключить тему", lang: "Язык" },
+  en: { label: "Password", submit: "Sign in", wrong: "Wrong password",
+        fail: "Sign-in failed: ", theme: "Toggle theme", lang: "Language" },
+};
+
+let lang = localStorage.getItem(KEY_LANG) === "en" ? "en" : "ru";
+let T = STRINGS[lang];
+let errorState = null;   // {key} — kept so the message survives a language switch
+
+function applyTheme(theme) {
+  if (theme === "dark" || theme === "light") document.documentElement.dataset.theme = theme;
+  else delete document.documentElement.dataset.theme;
+}
+
+function currentTheme() {
+  const saved = localStorage.getItem(KEY_THEME);
+  if (saved === "dark" || saved === "light") return saved;
+  return systemDark.matches ? "dark" : "light";
+}
+
+function showError(state) {
+  errorState = state;
+  const box = document.getElementById("login-error");
+  if (!state) { box.hidden = true; return; }
+  box.textContent = state.key === "wrong" ? T.wrong : T.fail + state.info;
+  box.hidden = false;
+}
+
+function applyLang() {
+  T = STRINGS[lang];
+  document.documentElement.lang = lang;
+  document.getElementById("login-label").textContent = T.label;
+  document.getElementById("login-submit").textContent = T.submit;
+  document.getElementById("lang-current").textContent = lang.toUpperCase();
+  document.getElementById("lang-btn").title = T.lang;
+  document.getElementById("theme-btn").title = T.theme;
+  showError(errorState);
+}
+
+// the choice is stored under the same keys the app uses, so it carries over after sign-in
+applyTheme(localStorage.getItem(KEY_THEME));
+applyLang();
+
+document.getElementById("theme-btn").addEventListener("click", () => {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  localStorage.setItem(KEY_THEME, next);
+  applyTheme(next);
+});
+
+document.getElementById("lang-btn").addEventListener("click", () => {
+  lang = lang === "ru" ? "en" : "ru";
+  localStorage.setItem(KEY_LANG, lang);
+  applyLang();
+});
+
+document.getElementById("login-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  showError(null);
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: document.getElementById("login-password").value }),
+    });
+    if (res.status === 401) { showError({ key: "wrong" }); return; }
+    if (!res.ok) throw new Error(res.status);
+    location.href = "/";
+  } catch (err) {
+    showError({ key: "fail", info: err.message });
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+name: statedash
+
+services:
+  statedash:
+    image: ghcr.io/gera-corp-org/statedash:latest
+    container_name: statedash
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # shown in the settings page only; the actual binding is done by ports below
+      - LISTEN=${LISTEN:-127.0.0.1:8080}
+    volumes:
+      # settings changed in the UI survive a container rebuild
+      - ./data:/srv/data
+      # .env — so the LISTEN setting can be changed from the UI
+      - ./.env:/srv/.env
+    ports:
+      # listens on localhost only by default; to expose it on the network set
+      # LISTEN=0.0.0.0:8080 in .env (better together with a password)
+      - "${LISTEN:-127.0.0.1:8080}:8080"
+
+# Reaching OPNsense by a hostname whose DNS does not resolve where the container
+# runs — for example when a certificate is issued for a name only valid inside
+# the LAN — needs a static mapping. Put it in docker-compose.override.yml, which
+# Compose picks up automatically and which is not tracked by git:
+#
+#   services:
+#     statedash:
+#       extra_hosts:
+#         - "opnsense.example.com:192.168.1.1"

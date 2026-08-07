@@ -1,0 +1,15 @@
+# local configuration — copy .env.example and fill it in
+.env
+
+# runtime state: settings.json holds the UI password hash and the API keys
+data/*
+!data/.gitkeep
+
+# machine-specific tool permissions
+.claude/settings.local.json
+
+# local Compose overrides: host mappings, ports, build settings
+docker-compose.override.yml
+
+__pycache__/
+*.pyc

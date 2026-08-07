@@ -1,0 +1,11 @@
+# Builds the image from source instead of pulling it. Use it when working on
+# the code:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# Note that naming files with -f stops Compose from loading
+# docker-compose.override.yml on its own — list it explicitly if you have one.
+services:
+  statedash:
+    build: ./backend
+    image: statedash:dev
