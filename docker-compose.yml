@@ -6,6 +6,11 @@ services:
     container_name: statedash
     restart: unless-stopped
     env_file: .env
+    # The container runs as uid 1000, which owns ./data and .env on most
+    # systems. Where it does not, set PUID/PGID in .env to `id -u` and `id -g`
+    # — otherwise settings changed in the UI cannot be written to disk and are
+    # lost on restart.
+    user: "${PUID:-1000}:${PGID:-1000}"
     environment:
       # shown in the settings page only; the actual binding is done by ports below
       - LISTEN=${LISTEN:-127.0.0.1:8080}

@@ -1,12 +1,30 @@
 # Contributing to Statedash
 
-Bug reports, ideas and merge requests are all welcome.
+Bug reports, ideas and pull requests are all welcome.
 
 ## Before a large change
 
 Open an issue first and describe what you have in mind. It saves you from
 building something that turns out to conflict with the direction of the
 project.
+
+## Branch names
+
+Prefixed the git-flow way, so the intent is readable in the branch list:
+
+| Prefix | For |
+|---|---|
+| `feature/` | anything new, and refactoring |
+| `bugfix/` | a fix that can wait for the normal review |
+| `hotfix/` | a fix that cannot |
+| `release/` | preparing a version — changelog, version bumps |
+
+After the prefix, a short dash-separated description of the change rather than
+an issue number alone: `feature/non-root-container` says what it is,
+`feature/42` needs a lookup.
+
+`master` is the released state and is protected: it takes no direct pushes, so
+every change arrives through a pull request.
 
 ## Contributor Licence Agreement
 
