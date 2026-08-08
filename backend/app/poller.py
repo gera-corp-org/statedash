@@ -37,6 +37,11 @@ def _reserved(addr) -> bool:
     return addr.is_private or addr in _CGNAT
 
 
+def _iface_set(value: str) -> set[str]:
+    """"lan, wireguard" -> {"lan", "wireguard"} — the interfaces under watch."""
+    return {name.strip() for name in (value or "").split(",") if name.strip()}
+
+
 def _first_ipv4(allowed_ips: str) -> str:
     """'10.10.10.2/32, fd00::2/128' -> '10.10.10.2'."""
     for token in allowed_ips.split(","):
@@ -496,9 +501,14 @@ class Tracker:
                 host.ifaces.add(iface)
                 seen[ip] = host
 
-        # active WireGuard peers are shown as regular hosts (traffic top cannot count
-        # on a wg interface, but the peer data is already here)
-        for peer in self.wg_peers:
+        watched = _iface_set(settings.get("ifaces"))
+
+        # Active WireGuard peers are shown as regular hosts: traffic top cannot
+        # count on a wg interface, but the peer data is already here. They come
+        # from a different source than the records above, so the watch list has
+        # to be honoured explicitly — otherwise unticking WireGuard in the
+        # picker changes nothing.
+        for peer in self.wg_peers if "wireguard" in watched else ():
             ip = peer.get("tunnel_ip")
             handshake = peer.get("handshake") or 0
             if not ip or ip in seen or now - handshake > 180:
@@ -664,9 +674,15 @@ class Tracker:
     def snapshot(self) -> dict:
         now = time.time()
         hosts = []
+        watched = _iface_set(settings.get("ifaces"))
         for host in self.hosts.values():
             # drop hosts that have been silent for more than 10 minutes
             if now - host.last_seen > settings.get("idle_seconds"):
+                continue
+            # A host already listed keeps its entry until it goes idle, which
+            # made unticking an interface look like it did nothing for ten
+            # minutes. Hide it at once when none of its interfaces is watched.
+            if host.ifaces and not (host.ifaces & watched):
                 continue
             hosts.append({
                 "ip": host.ip,
