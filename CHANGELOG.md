@@ -4,6 +4,27 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.1.0 — 2026-08-08
+
+### Changed
+
+- **The throughput chart is split per interface.** It used to sum per-host rates
+  across every watched interface into one pair of lines, which hid a host
+  reachable on two of them being counted in both — a WireGuard client talking to
+  a LAN machine counted twice. There is now a line per interface per direction:
+  colour marks the direction, dash marks the interface. With a single interface
+  nothing changes.
+- The rates behind it are accumulated from the raw records before hosts are
+  merged, so each interface is counted once.
+
+### Added
+
+- A note by the chart title explaining what the numbers are: the sum of host
+  rates on the watched interfaces, not WAN throughput. It also covers the part
+  no split can fix — traffic between two local hosts lands in both the download
+  and the upload line, being the same bytes counted from each end. The same
+  explanation is in both READMEs.
+
 ## 1.0.2 — 2026-08-08
 
 ### Fixed
