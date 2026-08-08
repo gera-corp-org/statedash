@@ -931,6 +931,10 @@ async function poll() {
     state.firewallIps = new Set(data.firewall_ips || []);
     $("#poll-int").textContent = String(data.poll_seconds || 2);
     $("#mock-badge").hidden = !data.mock;
+    const ver = $("#side-version");
+    if (ver && data.version && ver.textContent !== data.version) {
+      ver.textContent = data.version;
+    }
     if (!ifaceList.length && data.ifaces) {   // before the list loads, show the value from the snapshot
       const label = $("#iface-badge").firstChild;
       if (label) label.textContent = data.ifaces;

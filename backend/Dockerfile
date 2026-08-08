@@ -33,9 +33,15 @@ RUN addgroup -g 1000 statedash \
  && chown 1000:1000 /srv/data
 
 WORKDIR /srv
+
+# Stamped by the release workflow from the git tag. Without it the interface
+# reports "dev", which is what a local build honestly is.
+ARG VERSION=dev
+
 ENV PYTHONPATH=/deps \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    STATEDASH_VERSION=${VERSION}
 
 COPY --from=build /deps /deps
 COPY --from=build --chmod=644 /tmp/geo-ipv4.csv.gz ./geo-ipv4.csv.gz

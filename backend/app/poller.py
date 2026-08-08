@@ -696,6 +696,7 @@ class Tracker:
             "poll_seconds": settings.get("poll_seconds"),
             "ifaces": settings.get("ifaces"),
             "mock": config.MOCK,
+            "version": config.VERSION,
             "error": self.last_error if now - self.last_poll_ok > settings.get("poll_seconds") * 3 else "",
             "firewall_ips": sorted(self.firewall_ips),
             "totals": [[round(ts), round(down), round(up)] for ts, down, up in self.totals],
