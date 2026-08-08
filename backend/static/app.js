@@ -202,6 +202,7 @@ const I18N = {
     "theme.title": "Переключить тему",
     "chart.title": "Пропускная способность",
     "chart.hint": "Сумма скоростей хостов на наблюдаемых интерфейсах, а не пропускная способность WAN. Обмен между двумя локальными хостами попадает и в загрузку, и в отдачу.",
+    "chart.pick": "Показать только эту линию. Повторное нажатие вернёт все",
     "chart.hide": "Скрыть",
     "chart.show": "Показать",
     "hosts.title": "Хосты",
@@ -497,6 +498,7 @@ const I18N = {
     "theme.title": "Toggle theme",
     "chart.title": "Throughput",
     "chart.hint": "The sum of host rates on the watched interfaces, not WAN throughput. Traffic between two local hosts lands in both the download and the upload line.",
+    "chart.pick": "Show only this line. Click again to bring them all back",
     "chart.hide": "Hide",
     "chart.show": "Show",
     "hosts.title": "Hosts",
@@ -908,7 +910,10 @@ function timeChart(canvas, tip) {
     const idx = Math.max(0, Math.min(Math.round(rel * (data.length - 1)), data.length - 1));
     render(idx);
     const point = data[idx];
-    const rows = series.map((s) => {
+    // busiest first, so the order in the tooltip matches how the lines are
+    // stacked on screen at the point being hovered
+    const ranked = [...series].sort((a, b) => (point[b.idx] || 0) - (point[a.idx] || 0));
+    const rows = ranked.map((s) => {
       const [value, unit] = fmtBits(point[s.idx] || 0);
       const label = s.label || t(s.labelKey);
       return `<div class="tip-row"><span class="dot" style="background:${cssVar(s.colorVar)}"></span>${label}: ${value} ${unit}</div>`;
@@ -938,10 +943,17 @@ function timeChart(canvas, tip) {
   };
 }
 
-// Interfaces are told apart by dash pattern and directions by colour: a line
-// per interface per direction, without inventing a palette that would clash
-// with the theme.
+// Each line gets its own colour, assigned from the categorical palette in a
+// fixed order so a series keeps its hue as others are filtered out. The dash
+// still marks the interface, which groups the pair belonging to one of them and
+// doubles as the cue where colour alone is not enough.
+const SERIES_COLORS = ["--series-down", "--series-up", "--series-3", "--series-4"];
 const IFACE_DASHES = [[], [6, 4], [2, 3], [9, 3, 2, 3], [12, 4]];
+
+// Empty means everything is shown. Clicking a legend entry puts it in here, so
+// the first click isolates one line and clicking it again empties the set and
+// brings them all back.
+let chartPicked = new Set();
 
 function buildThroughputSeries(ifaceTotals) {
   const names = Object.keys(ifaceTotals || {}).sort();
@@ -968,18 +980,36 @@ function buildThroughputSeries(ifaceTotals) {
   names.forEach((name, n) => {
     const dash = IFACE_DASHES[n % IFACE_DASHES.length];
     const label = (ifaceList.find((i) => i.name === name) || {}).label || name;
-    series.push({ idx: n * 2 + 1, colorVar: "--series-down", label: `${label} ${t("top.down")}`, dash });
-    series.push({ idx: n * 2 + 2, colorVar: "--series-up", label: `${label} ${t("top.up")}`, dash });
+    for (const [k, dirKey] of [[1, "top.down"], [2, "top.up"]]) {
+      const slot = n * 2 + k - 1;
+      series.push({
+        key: `${name}|${dirKey}`,          // stable across renders, so a pick survives
+        idx: n * 2 + k,
+        colorVar: SERIES_COLORS[slot % SERIES_COLORS.length],
+        label: `${label} ${t(dirKey)}`,
+        dash,
+      });
+    }
   });
   return { points, series };
 }
 
-function renderChartLegend(series) {
+function renderChartLegend(series, pickable = false) {
   const box = $("#chart-legend");
   if (!box) return;
   box.replaceChildren(...series.map((s) => {
-    const item = document.createElement("span");
+    const item = document.createElement(pickable ? "button" : "span");
     item.className = "legend-item";
+    if (pickable) {
+      item.type = "button";
+      item.title = t("chart.pick");
+      // with nothing picked every line is shown, so nothing is dimmed
+      if (chartPicked.size && !chartPicked.has(s.key)) item.classList.add("legend-off");
+      item.addEventListener("click", () => {
+        if (chartPicked.has(s.key)) chartPicked.delete(s.key); else chartPicked.add(s.key);
+        render();
+      });
+    }
     const key = document.createElement("span");
     key.className = "key";
     key.style.background = cssVar(s.colorVar);
@@ -1055,9 +1085,18 @@ function render() {
 
   const built = buildThroughputSeries(state.ifaceTotals);
   if (built) {
-    mainChart.draw(built.points, built.series);
-    renderChartLegend(built.series);
+    // a pick naming series that no longer exist would blank the chart, so it is
+    // dropped when the watched interfaces change
+    const keys = new Set(built.series.map((s) => s.key));
+    for (const key of chartPicked) if (!keys.has(key)) chartPicked.delete(key);
+
+    const shown = chartPicked.size
+      ? built.series.filter((s) => chartPicked.has(s.key))
+      : built.series;
+    mainChart.draw(built.points, shown);
+    renderChartLegend(built.series, true);
   } else {
+    chartPicked.clear();
     mainChart.draw(state.totals);
     renderChartLegend(DEFAULT_SERIES);
   }
