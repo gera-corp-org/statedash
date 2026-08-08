@@ -4,6 +4,17 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.0.2 — 2026-08-08
+
+### Fixed
+
+- **Unticking every interface no longer leaves the picker showing something
+  untrue.** With no boxes ticked the empty value was never sent, so the poller
+  carried on with the previous set while the interface claimed nothing was being
+  watched — and traffic kept arriving from interfaces it said it was ignoring.
+  Watching nothing has no use, so the last box now refuses to be unticked and
+  says why.
+
 ## 1.0.1 — 2026-08-08
 
 ### Fixed
