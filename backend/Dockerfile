@@ -8,11 +8,25 @@ ARG BASE=python:3.12-alpine3.24
 # cache, the build tooling and the uncompressed CSV never reach the image.
 FROM ${BASE} AS build
 
-# IP -> country database (CC0, github.com/sapics/ip-location-db)
-ADD https://cdn.jsdelivr.net/npm/@ip-location-db/geo-whois-asn-country/geo-whois-asn-country-ipv4.csv /tmp/geo-ipv4.csv
-# -n omits the timestamp: ADD stamps a date gzip cannot encode, and leaving it
-# out also keeps the build reproducible
-RUN gzip -9n /tmp/geo-ipv4.csv
+# IP -> country database (CC0, github.com/sapics/ip-location-db).
+#
+# curl rather than ADD because ADD cannot retry: a reset connection from the CDN
+# failed a release build once, and the whole release then waits on somebody
+# else's network. curl lives in the build stage only, so the runtime image is
+# unaffected.
+#
+# The size check guards against the other failure mode — a CDN answering 200
+# with an error page, which would silently produce an image whose geo lookups
+# all miss. The real file holds around 334k rows.
+#
+# -n omits the timestamp, which keeps the layer reproducible.
+RUN apk add --no-cache curl \
+ && curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 --max-time 300 \
+      -o /tmp/geo-ipv4.csv \
+      https://cdn.jsdelivr.net/npm/@ip-location-db/geo-whois-asn-country/geo-whois-asn-country-ipv4.csv \
+ && rows=$(wc -l < /tmp/geo-ipv4.csv) \
+ && if [ "$rows" -lt 100000 ]; then echo "geo database looks wrong: $rows rows" >&2; exit 1; fi \
+ && gzip -9n /tmp/geo-ipv4.csv
 
 COPY requirements.txt .
 # --target keeps the dependencies in one directory we can copy wholesale

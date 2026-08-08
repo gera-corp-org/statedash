@@ -73,6 +73,14 @@ An escape hatch already exists for unusual setups: `GEO_CSV` points the loader
 elsewhere, and a plain `.csv` next to the image copy is read instead of the
 gzipped one.
 
+The build depends on the CDN being up, which is a real constraint rather than a
+theoretical one: a reset connection from jsDelivr failed a release build once.
+The download retries now and checks the row count, so a blip no longer stops a
+release and an error page served with 200 cannot become an image whose lookups
+all miss. What remains is that a prolonged CDN outage blocks releasing at all.
+Vendoring the database into the repository would remove the dependency, at the
+cost of a 10 MB file in git history that changes on every refresh.
+
 ## Long-term history
 
 Rates live in memory and die with the container. Keeping them would allow
