@@ -200,6 +200,28 @@ OPNsense endpoints in use: `diagnostics/traffic/top`,
 - Plain HTTP without encryption: do not expose it to the Internet; for remote
   access a VPN is safer.
 
+## Running as a non-root user
+
+The container runs as uid 1000, which owns `./data` and `.env` after a normal
+clone. If your account uses a different id, put yours in `.env`:
+
+```sh
+echo "PUID=$(id -u)" >> .env
+echo "PGID=$(id -g)" >> .env
+```
+
+Getting this wrong fails quietly: the interface works, but settings changed in
+it cannot reach the disk and are lost on restart. The Settings page shows
+whether they are being saved.
+
+Upgrading from a version that ran as root leaves a `data/settings.json` owned
+by root, which the container can no longer write:
+
+```sh
+sudo chown -R "$(id -u):$(id -g)" data
+```
+
+
 Ideas that were considered and postponed, with the reasoning, are in
 [ROADMAP.md](ROADMAP.md).
 
