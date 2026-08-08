@@ -226,6 +226,7 @@ body.nav-collapsed .side-logo { margin: 0 auto; }
 }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
 .card-head h2 { font-size: 15px; font-weight: 600; }
+.card-head-left { display: flex; align-items: center; }
 .card-head-right { display: flex; align-items: center; gap: 14px; }
 
 .link-btn {
