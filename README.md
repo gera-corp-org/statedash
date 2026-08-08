@@ -7,7 +7,10 @@ where every device connects to, which firewall rules the traffic flows through
 and who is connected over VPN. Nothing is installed on the firewall — the app
 polls the OPNsense REST API and runs in Docker on any machine.
 
-![hosts](docs/statedash-hosts.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-hosts-dark.png">
+  <img alt="hosts" src="docs/statedash-hosts.png">
+</picture>
 
 ## Sections
 
@@ -38,7 +41,10 @@ Clicking a row opens a bottom panel with three tabs:
   with its paired NAT entry) or copy the addresses;
 - **Histogram** — the host’s throughput over the last 15 minutes.
 
-![connections](docs/statedash-connections.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-connections-dark.png">
+  <img alt="connections" src="docs/statedash-connections.png">
+</picture>
 
 ### Rules
 
@@ -63,7 +69,10 @@ Each rule node lists the destination ports its connections currently use
 (`443/tcp · 53/udp · …`); hovering shows the full list with service names. Below is the configured rule set (filter and outbound NAT) read from
 the OPNsense API, with current usage per rule.
 
-![rules](docs/statedash-rules.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-rules-dark.png">
+  <img alt="rules" src="docs/statedash-rules.png">
+</picture>
 
 ### VPN · WireGuard
 
@@ -72,7 +81,10 @@ allowed IPs, current rates, total traffic. Clicking a peer opens the same
 detail panel: overview, connections by tunnel IP, histogram. Active peers also
 appear in “Active hosts” as regular devices.
 
-![wireguard](docs/statedash-wireguard.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-wireguard-dark.png">
+  <img alt="wireguard" src="docs/statedash-wireguard.png">
+</picture>
 
 ### Settings
 
@@ -89,7 +101,10 @@ appear in “Active hosts” as regular devices.
   only ever shown masked and never sent back; new values are verified with a
   request to the firewall and applied only if it answers.
 
-![settings](docs/statedash-settings.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-settings-dark.png">
+  <img alt="settings" src="docs/statedash-settings.png">
+</picture>
 
 ### Across the interface
 
