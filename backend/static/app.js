@@ -105,6 +105,7 @@ const I18N = {
     "set.ifaces.none": "не выбрано",
     "top.ifaces.title": "Интерфейсы для наблюдения — нажмите, чтобы изменить",
     "top.ifaces.saved": "Интерфейсы обновлены",
+    "top.ifaces.last": "Хотя бы один интерфейс должен остаться выбранным",
     "set.poll_seconds": "Период опроса скоростей, с",
     "set.states_seconds": "Период опроса соединений и WireGuard, с",
     "set.enrich_seconds": "Период обновления имён (ARP/DHCP/DNS), с",
@@ -398,6 +399,7 @@ const I18N = {
     "set.ifaces.none": "none selected",
     "top.ifaces.title": "Monitored interfaces — click to change",
     "top.ifaces.saved": "Interfaces updated",
+    "top.ifaces.last": "At least one interface has to stay selected",
     "set.poll_seconds": "Speed poll interval, s",
     "set.states_seconds": "Connections & WireGuard poll interval, s",
     "set.enrich_seconds": "Name refresh interval (ARP/DHCP/DNS), s",
@@ -2701,6 +2703,15 @@ function buildIfaceMenu(pop, onToggle) {
     cb.type = "checkbox";
     cb.checked = ifaceSelected.has(iface.name);
     cb.addEventListener("change", () => {
+      // Unticking the last one used to leave every box empty while the server
+      // kept polling the previous set, because an empty value was never sent.
+      // Watching nothing has no use anyway, so refuse the click rather than let
+      // the picker show something that is not true.
+      if (!cb.checked && ifaceSelected.size <= 1) {
+        cb.checked = true;
+        setStatusToast(t("top.ifaces.last"));
+        return;
+      }
       if (cb.checked) ifaceSelected.add(iface.name); else ifaceSelected.delete(iface.name);
       onToggle();
     });
@@ -2729,7 +2740,7 @@ document.addEventListener("click", (event) => {
 
 async function applyIfacesNow() {
   const value = selectedIfaces();
-  if (!value) return;   // with no boxes ticked the setting is left alone
+  if (!value) return;   // belt and braces: the picker no longer allows it
   try {
     const res = await fetch("/api/settings", {
       method: "PUT",
