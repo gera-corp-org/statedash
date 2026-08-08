@@ -35,3 +35,6 @@ SPARK_POINTS = int(os.environ.get("SPARK_POINTS", "90"))
 LISTEN = os.environ.get("LISTEN", "127.0.0.1:8080")
 # host — container on the host network: real client IPs stay visible
 NET_MODE = os.environ.get("STATEDASH_NET", "bridge")
+
+# stamped into the image at build time; "dev" for a local build
+VERSION = os.environ.get("STATEDASH_VERSION", "dev").strip() or "dev"

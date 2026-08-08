@@ -805,3 +805,11 @@ td.num .rate-unit { color: var(--text-muted); font-size: 12px; margin-left: 3px;
 }
 :root[data-theme="dark"] .conn-table tbody tr.conn-out:hover td { background: rgba(12, 163, 12, 0.26); }
 :root[data-theme="dark"] .conn-table tbody tr.conn-in:hover td { background: rgba(208, 59, 59, 0.26); }
+
+.side-foot { display: flex; align-items: baseline; gap: 6px; }
+.side-ver {
+  font-size: 11px;
+  opacity: .55;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
