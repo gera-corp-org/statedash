@@ -80,12 +80,12 @@
   <div id="view-hosts" class="view">
   <section class="card chart-card">
     <div class="card-head">
-      <h2 data-i18n="chart.title">Пропускная способность</h2>
+      <div class="card-head-left">
+        <h2 data-i18n="chart.title">Пропускная способность</h2>
+        <span class="hint-mark" data-i18n-title="chart.hint" title="" aria-hidden="true">?</span>
+      </div>
       <div class="card-head-right">
-        <div class="legend">
-          <span class="legend-item"><span class="key key-down"></span><span data-i18n="top.down">Загрузка</span></span>
-          <span class="legend-item"><span class="key key-up"></span><span data-i18n="top.up">Отдача</span></span>
-        </div>
+        <div class="legend" id="chart-legend"></div>
         <button id="chart-toggle" class="link-btn" type="button">Скрыть</button>
       </div>
     </div>

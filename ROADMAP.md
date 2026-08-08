@@ -73,21 +73,6 @@ An escape hatch already exists for unusual setups: `GEO_CSV` points the loader
 elsewhere, and a plain `.csv` next to the image copy is read instead of the
 gzipped one.
 
-## Splitting the throughput chart by interface
-
-The chart sums per-host rates across every watched interface, which has two
-consequences worth showing rather than hiding:
-
-- Traffic between two local hosts lands in both the download and the upload
-  line — the same bytes, counted once from each end.
-- A host reachable on two watched interfaces has its rates added together. A
-  WireGuard client talking to a LAN machine is counted twice when both `lan`
-  and `wireguard` are watched.
-
-Neither is wrong for "how busy are my hosts", but it does mean the chart is not
-WAN throughput and must not be read as such. Separate lines per interface, or
-an explicit note in the interface, would remove the ambiguity.
-
 ## Long-term history
 
 Rates live in memory and die with the container. Keeping them would allow

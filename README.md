@@ -188,6 +188,14 @@ OPNsense endpoints in use: `diagnostics/traffic/top`,
 `diagnostics/interface/search_arp`, `dhcpv4/leases/searchLease`,
 `diagnostics/dns/reverse_lookup`, `wireguard/service/show`.
 
+### What the throughput chart shows
+
+The sum of per-host rates on the watched interfaces, with one line per
+interface per direction — **not** WAN throughput. Two consequences worth
+knowing: traffic between two local hosts lands in both the download and the
+upload line, being the same bytes counted from each end; and a host reachable
+on two watched interfaces contributes to both.
+
 ## Limitations
 
 - **History lives in memory** (≈15 minutes for hosts, ≈75 minutes for

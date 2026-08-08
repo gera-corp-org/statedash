@@ -201,6 +201,7 @@ const I18N = {
     "badge.mock": "тестовые данные",
     "theme.title": "Переключить тему",
     "chart.title": "Пропускная способность",
+    "chart.hint": "Сумма скоростей хостов на наблюдаемых интерфейсах, а не пропускная способность WAN. Обмен между двумя локальными хостами попадает и в загрузку, и в отдачу.",
     "chart.hide": "Скрыть",
     "chart.show": "Показать",
     "hosts.title": "Хосты",
@@ -495,6 +496,7 @@ const I18N = {
     "badge.mock": "mock data",
     "theme.title": "Toggle theme",
     "chart.title": "Throughput",
+    "chart.hint": "The sum of host rates on the watched interfaces, not WAN throughput. Traffic between two local hosts lands in both the download and the upload line.",
     "chart.hide": "Hide",
     "chart.show": "Show",
     "hosts.title": "Hosts",
@@ -750,9 +752,18 @@ function cssVar(name) {
 
 /* ---------- chart factory (down/up lines with a crosshair) ---------- */
 
+// Two series unless told otherwise, where a point is [ts, down, up]. The
+// throughput chart passes one pair per interface instead, so a point becomes
+// [ts, v0, v1, ...] with a descriptor per value.
+const DEFAULT_SERIES = [
+  { idx: 1, colorVar: "--series-down", labelKey: "top.down", dash: [] },
+  { idx: 2, colorVar: "--series-up", labelKey: "top.up", dash: [] },
+];
+
 function timeChart(canvas, tip) {
   const geom = { padL: 56, padR: 12, padT: 8, padB: 22 };
-  let data = [];   // [[ts, down, up], ...]
+  let data = [];   // [[ts, v0, v1, ...], ...]
+  let series = DEFAULT_SERIES;
 
   function prep() {
     const dpr = window.devicePixelRatio || 1;
@@ -791,7 +802,8 @@ function timeChart(canvas, tip) {
     const t0 = data[0][0];
     const t1 = data[data.length - 1][0];
     const span = Math.max(t1 - t0, 1);
-    const maxVal = niceMax(Math.max(...data.map((d) => Math.max(d[1], d[2])), 1000));
+    const maxVal = niceMax(Math.max(
+      ...data.map((d) => Math.max(...series.map((s) => d[s.idx] || 0))), 1000));
     const x = (ts) => padL + ((ts - t0) / span) * plotW;
     const y = (v) => padT + plotH - (v / maxVal) * plotH;
 
@@ -834,30 +846,35 @@ function timeChart(canvas, tip) {
     ctx.lineTo(w - padR, padT + plotH);
     ctx.stroke();
 
-    for (const [idx, colorVar] of [[1, "--series-down"], [2, "--series-up"]]) {
-      const color = cssVar(colorVar);
+    // the haze under a line turns to mud once several overlap, so it is drawn
+    // only while the chart holds a single pair
+    const fill = series.length <= 2;
+    for (const s of series) {
+      const color = cssVar(s.colorVar);
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
-      // ~10% haze fill
-      ctx.beginPath();
-      ctx.moveTo(x(t0), padT + plotH);
-      for (const d of data) ctx.lineTo(x(d[0]), y(d[idx]));
-      ctx.lineTo(x(t1), padT + plotH);
-      ctx.closePath();
-      ctx.globalAlpha = 0.1;
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      // 2px line
+      if (fill) {
+        ctx.beginPath();
+        ctx.moveTo(x(t0), padT + plotH);
+        for (const d of data) ctx.lineTo(x(d[0]), y(d[s.idx] || 0));
+        ctx.lineTo(x(t1), padT + plotH);
+        ctx.closePath();
+        ctx.globalAlpha = 0.1;
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
       ctx.beginPath();
       for (let i = 0; i < data.length; i++) {
         const px = x(data[i][0]);
-        const py = y(data[i][idx]);
+        const py = y(data[i][s.idx] || 0);
         if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
+      ctx.setLineDash(s.dash || []);
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     // crosshair and markers with a surface-coloured ring
@@ -870,10 +887,10 @@ function timeChart(canvas, tip) {
       ctx.moveTo(px, padT);
       ctx.lineTo(px, padT + plotH);
       ctx.stroke();
-      for (const [idx, colorVar] of [[1, "--series-down"], [2, "--series-up"]]) {
+      for (const s of series) {
         ctx.beginPath();
-        ctx.arc(px, y(point[idx]), 4, 0, Math.PI * 2);
-        ctx.fillStyle = cssVar(colorVar);
+        ctx.arc(px, y(point[s.idx] || 0), 4, 0, Math.PI * 2);
+        ctx.fillStyle = cssVar(s.colorVar);
         ctx.fill();
         ctx.lineWidth = 2;
         ctx.strokeStyle = cssVar("--surface-1");
@@ -891,12 +908,12 @@ function timeChart(canvas, tip) {
     const idx = Math.max(0, Math.min(Math.round(rel * (data.length - 1)), data.length - 1));
     render(idx);
     const point = data[idx];
-    const [dv, du] = fmtBits(point[1]);
-    const [uv, uu] = fmtBits(point[2]);
-    tip.innerHTML = `
-      <div class="tip-time">${fmtClock(point[0])}</div>
-      <div class="tip-row"><span class="dot" style="background:${cssVar("--series-down")}"></span>${t("top.down")}: ${dv} ${du}</div>
-      <div class="tip-row"><span class="dot" style="background:${cssVar("--series-up")}"></span>${t("top.up")}: ${uv} ${uu}</div>`;
+    const rows = series.map((s) => {
+      const [value, unit] = fmtBits(point[s.idx] || 0);
+      const label = s.label || t(s.labelKey);
+      return `<div class="tip-row"><span class="dot" style="background:${cssVar(s.colorVar)}"></span>${label}: ${value} ${unit}</div>`;
+    });
+    tip.innerHTML = `<div class="tip-time">${fmtClock(point[0])}</div>` + rows.join("");
     tip.hidden = false;
     const t0 = data[0][0];
     const span = Math.max(data[data.length - 1][0] - t0, 1);
@@ -912,9 +929,67 @@ function timeChart(canvas, tip) {
   });
 
   return {
-    draw(newData) { data = newData; render(); },
+    draw(newData, newSeries) {
+      data = newData;
+      series = newSeries || DEFAULT_SERIES;
+      render();
+    },
     redraw() { render(); },
   };
+}
+
+// Interfaces are told apart by dash pattern and directions by colour: a line
+// per interface per direction, without inventing a palette that would clash
+// with the theme.
+const IFACE_DASHES = [[], [6, 4], [2, 3], [9, 3, 2, 3], [12, 4]];
+
+function buildThroughputSeries(ifaceTotals) {
+  const names = Object.keys(ifaceTotals || {}).sort();
+  // with a single interface the plain two-line chart says the same thing
+  if (names.length < 2) return null;
+  const length = Math.min(...names.map((n) => ifaceTotals[n].length));
+  if (length < 2) return null;
+
+  // every series is appended in the same poll, so aligning them from the end
+  // lines the timestamps up even when one interface joined later
+  const points = [];
+  for (let i = 0; i < length; i++) {
+    const first = ifaceTotals[names[0]];
+    const row = [first[first.length - length + i][0]];
+    for (const name of names) {
+      const s = ifaceTotals[name];
+      const point = s[s.length - length + i];
+      row.push(point[1], point[2]);
+    }
+    points.push(row);
+  }
+
+  const series = [];
+  names.forEach((name, n) => {
+    const dash = IFACE_DASHES[n % IFACE_DASHES.length];
+    const label = (ifaceList.find((i) => i.name === name) || {}).label || name;
+    series.push({ idx: n * 2 + 1, colorVar: "--series-down", label: `${label} ${t("top.down")}`, dash });
+    series.push({ idx: n * 2 + 2, colorVar: "--series-up", label: `${label} ${t("top.up")}`, dash });
+  });
+  return { points, series };
+}
+
+function renderChartLegend(series) {
+  const box = $("#chart-legend");
+  if (!box) return;
+  box.replaceChildren(...series.map((s) => {
+    const item = document.createElement("span");
+    item.className = "legend-item";
+    const key = document.createElement("span");
+    key.className = "key";
+    key.style.background = cssVar(s.colorVar);
+    // a dashed key mirrors the dashed line, so the two can be matched up
+    if (s.dash && s.dash.length) key.classList.add("key-dashed");
+    const text = document.createElement("span");
+    text.textContent = s.label || t(s.labelKey);
+    item.append(key, text);
+    return item;
+  }));
 }
 
 const mainChart = timeChart($("#main-chart"), $("#chart-tip"));
@@ -930,6 +1005,7 @@ async function poll() {
     state.pollMs = Math.max((data.poll_seconds || 2) * 1000, 1000);
     state.hosts = data.hosts || [];
     state.totals = data.totals || [];
+    state.ifaceTotals = data.iface_totals || {};
     state.firewallIps = new Set(data.firewall_ips || []);
     $("#poll-int").textContent = String(data.poll_seconds || 2);
     $("#mock-badge").hidden = !data.mock;
@@ -977,7 +1053,14 @@ function render() {
   $("#tile-up").textContent = `${uv} ${uu}`;
   $("#tile-hosts").textContent = String(state.hosts.filter((h) => h.active).length);
 
-  mainChart.draw(state.totals);
+  const built = buildThroughputSeries(state.ifaceTotals);
+  if (built) {
+    mainChart.draw(built.points, built.series);
+    renderChartLegend(built.series);
+  } else {
+    mainChart.draw(state.totals);
+    renderChartLegend(DEFAULT_SERIES);
+  }
   renderTable();
 
   if (state.selectedIp) {

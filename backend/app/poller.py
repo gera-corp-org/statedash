@@ -388,6 +388,9 @@ class Tracker:
         self.wg_history: dict[str, deque] = {}  # public_key -> (ts, rx_bps, tx_bps)
         self.rdns: dict[str, tuple[str, float]] = {}  # ip -> (name, when it was resolved)
         self.totals: deque = deque(maxlen=settings.get("history_points"))  # (ts, down, up)
+        # the same series split per interface: summing them is not the same as
+        # totals, because a host reachable on two of them is counted in each
+        self.iface_totals: dict[str, deque] = {}
         self.last_poll_ok: float = 0.0
         self.last_error: str = ""
         self._task: asyncio.Task | None = None
@@ -467,7 +470,9 @@ class Tracker:
         data = await self.client.traffic_top(settings.get("ifaces"))
         now = time.time()
         seen: dict[str, HostState] = {}
+        iface_sums: dict[str, list[float]] = {}
         for iface, records in data.items():
+            iface_sums.setdefault(iface, [0.0, 0.0])
             for rec in records:
                 ip = rec["address"]
                 rate_in = float(rec.get("rate_bits_in") or 0)
@@ -478,6 +483,9 @@ class Tracker:
                 swap = settings.get("direction_swap")
                 down, up = (rate_out, rate_in) if swap else (rate_in, rate_out)
                 cdown, cup = (cum_out, cum_in) if swap else (cum_in, cum_out)
+
+                iface_sums[iface][0] += down
+                iface_sums[iface][1] += up
 
                 host = seen.get(ip) or self.hosts.get(ip) or HostState(ip=ip, first_seen=now)
                 if ip in seen:  # same address on a second interface — sum the rates
@@ -547,6 +555,19 @@ class Tracker:
         self.hosts = seen
         active = [h for h in seen.values() if now - h.last_seen < settings.get("poll_seconds") * 2]
         self.totals.append((now, sum(h.bps_down for h in active), sum(h.bps_up for h in active)))
+
+        # per-interface series, from the raw records: unlike the total above it
+        # counts a host on two interfaces once per interface rather than twice
+        watched_now = _iface_set(settings.get("ifaces"))
+        for name in list(self.iface_totals):
+            if name not in watched_now:
+                del self.iface_totals[name]
+        for name, (down, up) in iface_sums.items():
+            series = self.iface_totals.get(name)
+            if series is None:
+                series = deque(maxlen=settings.get("history_points"))
+                self.iface_totals[name] = series
+            series.append((now, down, up))
 
     async def _enrich_loop(self) -> None:
         # give the poller time to collect hosts so names resolve on the first pass
@@ -716,6 +737,10 @@ class Tracker:
             "error": self.last_error if now - self.last_poll_ok > settings.get("poll_seconds") * 3 else "",
             "firewall_ips": sorted(self.firewall_ips),
             "totals": [[round(ts), round(down), round(up)] for ts, down, up in self.totals],
+            "iface_totals": {
+                name: [[round(ts), round(down), round(up)] for ts, down, up in series]
+                for name, series in self.iface_totals.items()
+            },
             "hosts": hosts,
         }
 
