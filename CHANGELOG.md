@@ -4,6 +4,19 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.0.1 — 2026-08-08
+
+### Fixed
+
+- **The interface picker in the top bar now takes effect.** It saved the setting
+  correctly all along, but the result was invisible for three separate reasons:
+  a host already listed kept its entry until it went idle ten minutes later;
+  WireGuard peers are added from the peer list rather than from traffic top and
+  that path ignored the watch list entirely, so unticking WireGuard could never
+  remove them; and in demo mode the generator returned the same hosts under
+  every interface, which made the picker purely decorative. Unticking an
+  interface now drops its hosts on the next poll.
+
 ## 1.0.0 — 2026-08-08
 
 First public release.
