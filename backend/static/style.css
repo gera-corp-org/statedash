@@ -813,3 +813,27 @@ td.num .rate-unit { color: var(--text-muted); font-size: 12px; margin-left: 3px;
   letter-spacing: .02em;
   white-space: nowrap;
 }
+
+/* legend key mirroring a dashed line, so a series can be matched to its entry */
+.key-dashed {
+  background-image: repeating-linear-gradient(
+    90deg, transparent 0 3px, var(--surface-1) 3px 5px);
+}
+
+/* small circled question mark carrying an explanatory title */
+.hint-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 6px;
+  border: 1px solid var(--axis);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1;
+  cursor: help;
+  vertical-align: middle;
+}
+.hint-mark:hover { color: var(--text); border-color: var(--text-muted); }
