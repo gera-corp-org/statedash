@@ -80,12 +80,21 @@ class MockClient:
                 {"name": "wan", "label": "WAN", "device": "em0"},
                 {"name": "wireguard", "label": "WireGuard", "device": ""}]
 
+    @staticmethod
+    def _iface_of(ip: str) -> str:
+        """Tunnel addresses sit on the WireGuard interface, everything else on lan."""
+        return "wireguard" if ip.startswith("10.0.0.") else "lan"
+
     async def traffic_top(self, ifaces: str) -> dict[str, list[dict]]:
         now = time.time()
         dt = max(now - self._last, 0.1)
         self._last = now
-        records = []
+        wanted = {name.strip() for name in ifaces.split(",") if name.strip()}
+        result: dict[str, list[dict]] = {name: [] for name in wanted}
         for ip, _, _ in _HOSTS:
+            iface = self._iface_of(ip)
+            if iface not in wanted:
+                continue
             level = self._levels[ip]
             for i in (0, 1):
                 level[i] = max(1e3, min(level[i] * random.uniform(0.7, 1.35), 9e7))
@@ -93,7 +102,7 @@ class MockClient:
                 level[0] *= 10
             self._cum[ip][0] += level[0] / 8 * dt
             self._cum[ip][1] += level[1] / 8 * dt
-            records.append({
+            result[iface].append({
                 "address": ip,
                 "rate_bits_in": level[0],
                 "rate_bits_out": level[1],
@@ -101,7 +110,9 @@ class MockClient:
                 "cumulative_bytes_out": self._cum[ip][1],
                 "tags": ["local"],
             })
-        return {iface: records for iface in ifaces.split(",")}
+        # each host belongs to exactly one interface, so unticking one in the
+        # picker actually removes its hosts — the same as against a real firewall
+        return result
 
     # (label, rule id, description) — as pf reports them: label matches the rule uuid
     _RULES = [
