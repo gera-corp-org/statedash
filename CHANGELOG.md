@@ -4,6 +4,28 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.2.0 — 2026-08-08
+
+### Added
+
+- **Each line on the throughput chart has its own colour.** Colour used to mark
+  the direction and the dash the interface, so two lines shared a hue. Every
+  series now takes its own slot from the categorical palette, assigned in fixed
+  order so a line keeps its colour as others are filtered out. The dash stays as
+  a second cue and to group the pair belonging to one interface.
+- **The legend filters the chart.** Clicking an entry shows only that line,
+  clicking another adds it, and clearing the last selection brings them all
+  back — so one, two, three or all of them can be shown. Picks are keyed by
+  interface and direction, so they survive a redraw.
+- Tooltip rows are ordered by the value under the cursor, busiest first, which
+  matches how the lines sit on screen at that point.
+
+### Fixed
+
+- **The WireGuard line read a flat zero.** Traffic top reports nothing on a wg
+  interface, so the per-interface series has to be fed from the peer data the
+  poller already collects — which the 1.1.0 split did not do.
+
 ## 1.1.0 — 2026-08-08
 
 ### Changed
