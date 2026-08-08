@@ -1,4 +1,4 @@
-# Statedash — мониторинг сети OPNsense
+# <img src="docs/logo.svg" width="28" align="top" alt=""> Statedash — мониторинг сети OPNsense
 
 *[English](README.md) · Русский*
 

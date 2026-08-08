@@ -1,4 +1,4 @@
-# Statedash — network monitoring for OPNsense
+# <img src="docs/logo.svg" width="28" align="top" alt=""> Statedash — network monitoring for OPNsense
 
 *English · [Русский](README.ru.md)*
 
