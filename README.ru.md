@@ -1,4 +1,4 @@
-# Statedash — мониторинг сети OPNsense
+# <img src="docs/logo.svg" width="28" align="top" alt=""> Statedash — мониторинг сети OPNsense
 
 *[English](README.md) · Русский*
 
@@ -7,7 +7,10 @@
 VPN. Ничего не ставится на файрвол — приложение опрашивает REST API OPNsense и
 работает в Docker на любой машине.
 
-![hosts](docs/statedash-hosts-ru.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-hosts-ru-dark.png">
+  <img alt="hosts" src="docs/statedash-hosts-ru.png">
+</picture>
 
 ## Разделы
 
@@ -38,7 +41,10 @@ VPN. Ничего не ставится на файрвол — приложен
   или скопировать адреса;
 - **Гистограмма** — график скорости хоста за 15 минут.
 
-![connections](docs/statedash-connections-ru.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-connections-ru-dark.png">
+  <img alt="connections" src="docs/statedash-connections-ru.png">
+</picture>
 
 ### Правила
 
@@ -63,7 +69,10 @@ WAN-интерфейсах вынесены в отдельную рамку «�
 (`443/tcp · 53/udp · …`); наведение показывает весь список со службами. Ниже — настроенные
 правила (фильтрация и исходящий NAT) из API OPNsense с текущей загрузкой.
 
-![rules](docs/statedash-rules-ru.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-rules-ru-dark.png">
+  <img alt="rules" src="docs/statedash-rules-ru.png">
+</picture>
 
 ### VPN · WireGuard
 
@@ -72,7 +81,10 @@ WAN-интерфейсах вынесены в отдельную рамку «�
 обзор, соединения по туннельному IP, гистограмма. Активные пиры дополнительно
 попадают в «Активные хосты» как обычные устройства.
 
-![wireguard](docs/statedash-wireguard-ru.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-wireguard-ru-dark.png">
+  <img alt="wireguard" src="docs/statedash-wireguard-ru.png">
+</picture>
 
 ### Настройки
 
@@ -89,7 +101,10 @@ WAN-интерфейсах вынесены в отдельную рамку «�
   показываются только маской и наружу не отдаются; новые значения проверяются
   запросом к файрволу и применяются, только если он ответил.
 
-![settings](docs/statedash-settings-ru.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-settings-ru-dark.png">
+  <img alt="settings" src="docs/statedash-settings-ru.png">
+</picture>
 
 ### Интерфейс в целом
 
