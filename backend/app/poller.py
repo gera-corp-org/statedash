@@ -527,6 +527,11 @@ class Tracker:
             # peer rx = received by the firewall from the client (its upload), tx = towards the client
             host.bps_down = float(peer.get("tx_bps") or 0)
             host.bps_up = float(peer.get("rx_bps") or 0)
+            # traffic top reports nothing on a wg interface, so the per-interface
+            # series has to be fed from here or the WireGuard line stays flat
+            wg_sums = iface_sums.setdefault("wireguard", [0.0, 0.0])
+            wg_sums[0] += host.bps_down
+            wg_sums[1] += host.bps_up
             host.total_down = float(peer.get("tx") or 0)
             host.total_up = float(peer.get("rx") or 0)
             host.last_seen = now

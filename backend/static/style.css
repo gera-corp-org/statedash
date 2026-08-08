@@ -11,6 +11,8 @@
   --border: rgba(11, 11, 11, 0.10);
   --series-down: #2a78d6;   /* download — blue, slot 1 */
   --series-up: #eb6834;     /* upload — orange, slot 2 */
+  --series-3: #1baf7a;      /* aqua, slot 3 */
+  --series-4: #eda100;      /* yellow, slot 4 */
   --critical: #d03b3b;
   --hover: rgba(11, 11, 11, 0.04);
   --select: rgba(42, 120, 214, 0.10);
@@ -36,6 +38,8 @@
     --border: rgba(255, 255, 255, 0.10);
     --series-down: #3987e5;
     --series-up: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
     --critical: #d03b3b;
     --hover: rgba(255, 255, 255, 0.05);
     --select: rgba(57, 135, 229, 0.16);
@@ -67,6 +71,8 @@
   --border: rgba(255, 255, 255, 0.10);
   --series-down: #3987e5;
   --series-up: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
   --critical: #d03b3b;
   --hover: rgba(255, 255, 255, 0.05);
   --select: rgba(57, 135, 229, 0.16);
@@ -838,3 +844,18 @@ td.num .rate-unit { color: var(--text-muted); font-size: 12px; margin-left: 3px;
   vertical-align: middle;
 }
 .hint-mark:hover { color: var(--text); border-color: var(--text-muted); }
+
+/* legend entries double as a filter once the chart carries several series */
+button.legend-item {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: opacity .12s;
+}
+button.legend-item:hover { background: var(--hover); }
+button.legend-item.legend-off { opacity: .38; }
