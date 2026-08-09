@@ -211,6 +211,19 @@ knowing: traffic between two local hosts lands in both the download and the
 upload line, being the same bytes counted from each end; and a host reachable
 on two watched interfaces contributes to both.
 
+### Kubernetes
+
+A Helm chart lives in [charts/statedash](charts/statedash):
+
+```sh
+helm install statedash oci://ghcr.io/gera-corp-org/charts/statedash \
+  --set opnsense.url=https://opnsense.example.com:4443 \
+  --set opnsense.existingSecret=statedash-opnsense
+```
+
+Its own [README](charts/statedash/README.md) covers the values and what is
+different about running under Kubernetes.
+
 ## Limitations
 
 - **History lives in memory** (≈15 minutes for hosts, ≈75 minutes for

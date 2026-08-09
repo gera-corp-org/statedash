@@ -1,0 +1,53 @@
+apiVersion: v2
+name: statedash
+description: Network traffic dashboard for OPNsense — active hosts, connections, a firewall rule map and WireGuard peers
+type: application
+
+# version is the chart's own; appVersion is the Statedash release it defaults to.
+# They move independently: a template fix bumps the first, a new release the second.
+version: 0.1.0
+appVersion: "1.2.0"
+
+home: https://github.com/gera-corp-org/statedash
+sources:
+  - https://github.com/gera-corp-org/statedash
+icon: https://raw.githubusercontent.com/gera-corp-org/statedash/master/docs/logo.svg
+keywords:
+  - opnsense
+  - firewall
+  - networking
+  - monitoring
+  - wireguard
+maintainers:
+  - name: gera-corp
+    email: exandore@gmail.com
+    url: https://github.com/gera-corp-org
+annotations:
+  # Artifact Hub reads these when the chart is listed there
+  artifacthub.io/category: monitoring-logging
+  artifacthub.io/license: AGPL-3.0-or-later
+  artifacthub.io/links: |
+    - name: source
+      url: https://github.com/gera-corp-org/statedash
+    - name: container image
+      url: https://github.com/gera-corp-org/statedash/pkgs/container/statedash
+    - name: changelog
+      url: https://github.com/gera-corp-org/statedash/blob/master/CHANGELOG.md
+  artifacthub.io/images: |
+    - name: statedash
+      image: ghcr.io/gera-corp-org/statedash:1.2.0
+  artifacthub.io/maintainers: |
+    - name: gera-corp
+      email: exandore@gmail.com
+  artifacthub.io/screenshots: |
+    - title: Active hosts
+      url: https://raw.githubusercontent.com/gera-corp-org/statedash/master/docs/statedash-hosts.png
+    - title: Traffic map through firewall rules and NAT
+      url: https://raw.githubusercontent.com/gera-corp-org/statedash/master/docs/statedash-rules.png
+    - title: Connections of one host
+      url: https://raw.githubusercontent.com/gera-corp-org/statedash/master/docs/statedash-connections.png
+    - title: WireGuard peers
+      url: https://raw.githubusercontent.com/gera-corp-org/statedash/master/docs/statedash-wireguard.png
+  artifacthub.io/changes: |
+    - kind: added
+      description: First release of the chart
