@@ -1,0 +1,11 @@
+# Ownership claim for Artifact Hub. The id comes from the repository card in the
+# Artifact Hub control panel after the repository is added there, and proves the
+# listing belongs to this project — which is what earns the "Verified publisher"
+# label.
+#
+# It is pushed to the registry as its own OCI artifact by the release workflow,
+# alongside the chart itself.
+repositoryID: REPLACE_WITH_ARTIFACT_HUB_ID
+owners:
+  - name: gera-corp
+    email: exandore@gmail.com

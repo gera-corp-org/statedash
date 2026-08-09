@@ -1,0 +1,76 @@
+name: chart
+
+# Publishes the Helm chart as an OCI artifact to the same registry as the image.
+# Artifact Hub indexes it straight from there — no gh-pages branch, no index.yaml.
+
+on:
+  push:
+    tags: ["chart-*"]
+  pull_request:
+    paths: ["charts/**"]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  chart:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: azure/setup-helm@v5
+
+      - name: Lint and render
+        run: |
+          helm lint charts/statedash --strict
+          # every conditional path, so a broken template cannot reach the registry
+          helm template t charts/statedash --set opnsense.url=https://fw:4443 > /dev/null
+          helm template t charts/statedash --set persistence.enabled=false > /dev/null
+          helm template t charts/statedash --set opnsense.existingSecret=s > /dev/null
+          helm template t charts/statedash --set ingress.enabled=true \
+                                           --set networkPolicy.enabled=true > /dev/null
+
+      - name: Check the chart and the app agree
+        run: |
+          # appVersion has to name a real image, or an install pulls nothing
+          app=$(helm show chart charts/statedash | awk '/^appVersion:/ {print $2}' | tr -d '"')
+          echo "appVersion: $app"
+          docker manifest inspect "ghcr.io/${{ github.repository }}:$app" > /dev/null
+
+      # a pull request only checks; it never pushes
+      - name: Log in to ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package and push
+        if: startsWith(github.ref, 'refs/tags/chart-')
+        run: |
+          # the tag names the version: chart-0.1.0 publishes 0.1.0
+          version="${GITHUB_REF_NAME#chart-}"
+          helm package charts/statedash --version "$version" -d /tmp
+          helm push "/tmp/statedash-${version}.tgz" \
+            "oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts"
+
+      - name: Push the Artifact Hub ownership metadata
+        if: startsWith(github.ref, 'refs/tags/chart-')
+        run: |
+          # Artifact Hub looks for this beside the chart in the registry. It is
+          # skipped while the id is still a placeholder, so a half-filled file
+          # never claims ownership of somebody else's listing.
+          if grep -q REPLACE_WITH_ARTIFACT_HUB_ID charts/statedash/artifacthub-repo.yml; then
+            echo "repositoryID not filled in yet — skipping"
+            exit 0
+          fi
+          oras push \
+            "${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/statedash:artifacthub.io" \
+            --config /dev/null:application/vnd.cncf.artifacthub.config.v1+json \
+            charts/statedash/artifacthub-repo.yml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml

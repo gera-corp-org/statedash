@@ -209,6 +209,19 @@ backend/static/  — фронтенд без сборки (vanilla JS + canvas +
 в отдачу, потому что это одни и те же байты, посчитанные с обоих концов; а хост,
 видимый сразу на двух наблюдаемых интерфейсах, учитывается в каждом.
 
+### Kubernetes
+
+Helm-чарт лежит в [charts/statedash](charts/statedash):
+
+```sh
+helm install statedash oci://ghcr.io/gera-corp-org/charts/statedash \
+  --set opnsense.url=https://opnsense.example.com:4443 \
+  --set opnsense.existingSecret=statedash-opnsense
+```
+
+Значения и особенности запуска в Kubernetes — в его
+[README](charts/statedash/README.md).
+
 ## Ограничения
 
 - **История живёт в памяти** (≈15 минут для хостов, ≈75 минут для WireGuard) и
