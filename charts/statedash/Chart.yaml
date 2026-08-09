@@ -1,0 +1,26 @@
+apiVersion: v2
+name: statedash
+description: Network traffic dashboard for OPNsense — active hosts, connections, a firewall rule map and WireGuard peers
+type: application
+
+# version is the chart's own; appVersion is the Statedash release it defaults to.
+# They move independently: a template fix bumps the first, a new release the second.
+version: 0.1.0
+appVersion: "1.2.0"
+
+home: https://github.com/gera-corp-org/statedash
+sources:
+  - https://github.com/gera-corp-org/statedash
+icon: https://raw.githubusercontent.com/gera-corp-org/statedash/master/docs/logo.svg
+keywords:
+  - opnsense
+  - firewall
+  - networking
+  - monitoring
+  - wireguard
+maintainers:
+  - name: gera-corp
+    email: exandore@gmail.com
+    url: https://github.com/gera-corp-org
+annotations:
+  licenses: AGPL-3.0-or-later

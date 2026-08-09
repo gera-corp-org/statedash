@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "statedash.fullname" . }}
+  labels: {{- include "statedash.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  {{- if .Values.persistence.enabled }}
+  # a ReadWriteOnce volume cannot be handed over while the old pod still holds it
+  strategy:
+    type: Recreate
+  {{- end }}
+  selector:
+    matchLabels: {{- include "statedash.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "statedash.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}{{- toYaml . | nindent 8 }}{{- end }}
+      annotations:
+        {{- if not .Values.opnsense.existingSecret }}
+        # rolls the pod when the credentials change, which it otherwise would not notice
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}{{- toYaml . | nindent 8 }}{{- end }}
+    spec:
+      serviceAccountName: {{ include "statedash.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: statedash
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: OPNSENSE_URL
+              value: {{ .Values.opnsense.url | quote }}
+            - name: IFACES
+              value: {{ .Values.opnsense.interfaces | quote }}
+            - name: TLS_VERIFY
+              value: {{ ternary "1" "0" .Values.opnsense.tlsVerify | quote }}
+            - name: POLL_SECONDS
+              value: {{ .Values.polling.speed | quote }}
+            - name: STATES_SECONDS
+              value: {{ .Values.polling.states | quote }}
+            - name: ENRICH_SECONDS
+              value: {{ .Values.polling.names | quote }}
+            - name: DIRECTION_SWAP
+              value: {{ ternary "1" "0" .Values.directionSwap | quote }}
+            - name: MOCK
+              value: {{ ternary "1" "0" .Values.mock | quote }}
+            - name: OPNSENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "statedash.secretName" . }}
+                  key: OPNSENSE_KEY
+            - name: OPNSENSE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "statedash.secretName" . }}
+                  key: OPNSENSE_SECRET
+            # LISTEN is deliberately not set: the Service decides where this is
+            # reachable, and .env is not mounted, so the setting stays read-only
+            # in the web interface rather than pretending to work.
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe: {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe: {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: /srv/data
+            {{- end }}
+            # Not needed today — the app starts and runs fine without it — but
+            # the root filesystem is read-only, so any future code path that
+            # writes a temporary file would fail at runtime rather than at
+            # start. An empty dir costs nothing to keep.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "statedash.fullname" .) }}
+        {{- end }}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}

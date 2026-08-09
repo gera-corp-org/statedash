@@ -1,0 +1,33 @@
+Statedash {{ .Chart.AppVersion }} is installed as {{ include "statedash.fullname" . }}.
+
+{{- if .Values.mock }}
+
+  Running on generated data (mock: true). Nothing is read from a firewall.
+{{- else if not .Values.opnsense.url }}
+
+  opnsense.url is empty, so there is nothing to poll. Set it to the OPNsense
+  web interface address, e.g. https://opnsense.example.com:4443
+{{- end }}
+
+Reach it with:
+
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+{{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+{{- end }}
+{{- end }}
+{{- else }}
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "statedash.fullname" . }} 8080:{{ .Values.service.port }}
+
+  then open http://127.0.0.1:8080
+{{- end }}
+
+{{- if not .Values.persistence.enabled }}
+
+Persistence is off: settings changed in the web interface, including a password
+set there, are lost when the pod restarts.
+{{- end }}
+
+The API user needs read-only privileges only — the list is in the README:
+https://github.com/gera-corp-org/statedash#1-user-and-privileges

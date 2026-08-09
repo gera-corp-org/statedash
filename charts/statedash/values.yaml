@@ -1,0 +1,126 @@
+image:
+  repository: ghcr.io/gera-corp-org/statedash
+  # empty means the chart's appVersion, so an upgrade of the chart moves the app
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# --- OPNsense connection ----------------------------------------------------
+opnsense:
+  # https://opnsense.example.com:4443 — the web UI address, reachable from the pod
+  url: ""
+  # comma separated, as the API names them: lan, opt1, wireguard
+  interfaces: lan
+  # false for a self-signed certificate
+  tlsVerify: true
+
+  # The API key and secret. Leave both empty and set existingSecret instead to
+  # keep them out of values.yaml, which is what most clusters want.
+  key: ""
+  secret: ""
+  # a Secret holding OPNSENSE_KEY and OPNSENSE_SECRET; takes precedence
+  existingSecret: ""
+
+# --- polling ----------------------------------------------------------------
+# Seconds. The defaults match the image; only set what you want to differ.
+polling:
+  speed: 2        # per-host rates
+  states: 10      # connections and WireGuard
+  names: 60       # ARP, DHCP and reverse DNS
+
+# set true when download and upload appear the wrong way round
+directionSwap: false
+
+# generated data instead of a real firewall, to try the interface out
+mock: false
+
+# --- storage ----------------------------------------------------------------
+# Holds settings.json: the password hash and any setting changed in the web
+# interface. Without it those are lost when the pod restarts — the interface
+# still works, but a password set through it does not survive.
+persistence:
+  enabled: true
+  size: 64Mi
+  accessMode: ReadWriteOnce
+  storageClass: ""
+  existingClaim: ""
+
+# --- workload ---------------------------------------------------------------
+replicaCount: 1
+
+# More than one replica is not useful: each pod polls independently and keeps
+# its own history in memory, so they would disagree with each other and multiply
+# the load on the firewall.
+
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: statedash.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    # the geo database is held in memory: about 30 MB of it, 75 MB in total
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+# uid 1000 is what the image runs as, and what owns the data directory
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+livenessProbe:
+  httpGet:
+    # served without authentication whatever the password setting
+    path: /login
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /login
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Statedash talks to the firewall's API and to nobody else; a policy allowing
+# just that is worth having where the cluster enforces them.
+networkPolicy:
+  enabled: false
+  # CIDRs the pod may reach, e.g. the firewall's address
+  egressCIDRs: []
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+extraEnv: []
