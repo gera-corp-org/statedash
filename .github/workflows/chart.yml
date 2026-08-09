@@ -25,6 +25,9 @@ jobs:
 
       - uses: azure/setup-helm@v5
 
+      # not on the runner by default, and the metadata push needs it
+      - uses: oras-project/setup-oras@v2
+
       - name: Lint and render
         run: |
           helm lint charts/statedash --strict
@@ -60,8 +63,10 @@ jobs:
           helm push "/tmp/statedash-${version}.tgz" \
             "oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts"
 
+      # Also on a manual run: the claim is independent of the chart version, so a
+      # correction to it should not need a release nobody asked for.
       - name: Push the Artifact Hub ownership metadata
-        if: startsWith(github.ref, 'refs/tags/chart-')
+        if: startsWith(github.ref, 'refs/tags/chart-') || github.event_name == 'workflow_dispatch'
         run: |
           # Artifact Hub looks for this beside the chart in the registry. It is
           # skipped while the id is still a placeholder, so a half-filled file
