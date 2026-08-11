@@ -130,6 +130,30 @@ const I18N = {
     "yes": "да",
     "no": "нет",
     "nav.wg": "VPN · WireGuard",
+    "nav.blocked": "Заблокировано",
+    "blk.title": "Заблокировано",
+    "blk.hint": "Собрано из журнала файрвола, а не из таблицы состояний: заблокированный пакет состояния не создаёт. Одинаковые события свёрнуты в группы.",
+    "blk.attempt": "Попытки соединения",
+    "blk.attempt.hint": "кто-то пытался открыть соединение и получил отказ",
+    "blk.late": "Запоздалые пакеты",
+    "blk.late.hint": "состояние соединения уже истекло",
+    "blk.noise": "Широковещательный шум",
+    "blk.noise.hint": "болтовня соседних сегментов",
+    "blk.fold": "Свернуть шум",
+    "blk.search": "Фильтр: адрес, порт, правило…",
+    "blk.empty": "Пока ничего не блокировалось",
+    "blk.allnoise": "Всё заблокированное — широковещательный шум, он свёрнут",
+    "blk.col.kind": "Вид",
+    "blk.col.rule": "Правило",
+    "blk.col.src": "Источник",
+    "blk.col.srcname": "Имя источника",
+    "blk.col.dst": "Назначение",
+    "blk.col.service": "Служба",
+    "blk.col.count": "Раз",
+    "blk.col.last": "Последний",
+    "blk.kind.attempt": "попытка",
+    "blk.kind.late": "запоздалый",
+    "blk.kind.broadcast": "широковещательный",
     "nav.rules": "Правила",
     "rules.title": "Карта трафика: откуда → правило → куда",
     "map.group.fw": "Файрвол",
@@ -426,6 +450,30 @@ const I18N = {
     "yes": "yes",
     "no": "no",
     "nav.wg": "VPN · WireGuard",
+    "nav.blocked": "Blocked",
+    "blk.title": "Blocked",
+    "blk.hint": "Taken from the firewall log rather than the state table: a blocked packet never creates a state. Identical events are folded into groups.",
+    "blk.attempt": "Connection attempts",
+    "blk.attempt.hint": "something tried to open a connection and was refused",
+    "blk.late": "Late packets",
+    "blk.late.hint": "the connection's state had already expired",
+    "blk.noise": "Broadcast noise",
+    "blk.noise.hint": "chatter from neighbouring segments",
+    "blk.fold": "Fold noise",
+    "blk.search": "Filter: address, port, rule…",
+    "blk.empty": "Nothing has been blocked yet",
+    "blk.allnoise": "Everything blocked is broadcast noise, which is folded away",
+    "blk.col.kind": "Kind",
+    "blk.col.rule": "Rule",
+    "blk.col.src": "Source",
+    "blk.col.srcname": "Source name",
+    "blk.col.dst": "Destination",
+    "blk.col.service": "Service",
+    "blk.col.count": "Times",
+    "blk.col.last": "Last seen",
+    "blk.kind.attempt": "attempt",
+    "blk.kind.late": "late",
+    "blk.kind.broadcast": "broadcast",
     "nav.rules": "Rules",
     "rules.title": "Traffic map: from → rule → to",
     "map.group.fw": "Firewall",
@@ -2438,6 +2486,99 @@ function selectRule(rule) {
 /* ---------- VPN · WireGuard section ---------- */
 
 let wgTimer = null;
+let blockedTimer = null;
+
+// whole numbers, grouped the way the locale expects — the same treatment the
+// rate columns get
+function fmtCount(n) {
+  return Math.round(n).toLocaleString(locale());
+}
+
+let blockedFold = true;
+let blockedFilter = "";
+
+// The same resizer the hosts and connections tables use — widths live in a
+// plain {key: px} object and are written into the colgroup.
+const blkWidths = {};
+try {
+  const saved = JSON.parse(localStorage.getItem("statedash-blk-widths"));
+  if (saved && typeof saved === "object") Object.assign(blkWidths, saved);
+} catch { /* битое значение — остаёмся на автоширине */ }
+
+function applyBlkWidths() {
+  applyColumnWidths($("#blk-table"), blkWidths, new Set());
+}
+
+/* ---------- "Blocked" section ---------- */
+
+async function loadBlocked() {
+  try {
+    const res = await fetch("/api/blocked");
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+
+    // No privilege for the firewall log: hide the section rather than show an
+    // error for something the operator chose not to grant.
+    $("#nav-blocked").hidden = !data.available;
+    if (!data.available) {
+      if (!$("#view-blocked").hidden) switchView("hosts");
+      return;
+    }
+
+    const c = data.counts || {};
+    $("#blk-attempt").textContent = fmtCount(c.attempt || 0);
+    $("#blk-late").textContent = fmtCount(c.late || 0);
+    $("#blk-noise").textContent = fmtCount(c.broadcast || 0);
+    // the tile only stands out when there is in fact something to look at
+    $(".blk-attempt").classList.toggle("blk-hot", (c.attempt || 0) > 0);
+
+    renderBlocked(data.groups || []);
+  } catch (err) {
+    $("#nav-blocked").hidden = true;
+  }
+}
+
+function renderBlocked(groups) {
+  const needle = blockedFilter.trim().toLowerCase();
+  const rows = groups.filter((g) => {
+    if (blockedFold && g.kind === "broadcast") return false;
+    if (!needle) return true;
+    return [g.src, g.dst, g.port, g.proto, g.rule, g.src_name, g.dst_name]
+      .some((v) => String(v || "").toLowerCase().includes(needle));
+  });
+
+  const body = $("#blk-body");
+  body.replaceChildren(...rows.map((g) => {
+    const tr = document.createElement("tr");
+    if (g.kind === "broadcast") tr.className = "blk-noise-row";
+
+    const kind = document.createElement("span");
+    kind.className = "blk-pill blk-pill-" + g.kind;
+    kind.textContent = t("blk.kind." + g.kind);
+
+    const service = g.port
+      ? `${g.port}/${g.proto}` + (g.service ? ` · ${g.service}` : "")
+      : "—";
+    const flag = (g.dst_country && g.dst_country.flag) || "";
+
+    for (const cell of [
+      kind, g.rule || "—", g.src, g.src_name || "—",
+      g.dst + (flag ? " " + flag : ""), service,
+      fmtCount(g.count), fmtClock(g.last),
+    ]) {
+      const td = document.createElement("td");
+      if (cell instanceof Node) td.append(cell); else td.textContent = cell;
+      tr.append(td);
+    }
+    return tr;
+  }));
+
+  const hiddenNoise = blockedFold && groups.some((g) => g.kind === "broadcast");
+  $("#blk-empty").hidden = rows.length > 0 || hiddenNoise;
+  $("#blk-empty").textContent = rows.length === 0 && hiddenNoise
+    ? t("blk.allnoise") : t("blk.empty");
+}
+
 
 function fmtAgo(epoch) {
   if (!epoch) return t("ago.never");
@@ -2687,12 +2828,17 @@ function switchView(name) {
   }
   $("#view-hosts").hidden = name !== "hosts";
   $("#view-wg").hidden = name !== "wg";
+  $("#view-blocked").hidden = name !== "blocked";
   $("#view-rules").hidden = name !== "rules";
   $("#view-settings").hidden = name !== "settings";
   closeDetail(); // the detail panel belongs to one section
   if (wgTimer) { clearInterval(wgTimer); wgTimer = null; }
   if (rulesTimer) { clearInterval(rulesTimer); rulesTimer = null; }
-  if (name === "wg") {
+  if (blockedTimer) { clearInterval(blockedTimer); blockedTimer = null; }
+  if (name === "blocked") {
+    loadBlocked();
+    blockedTimer = setInterval(loadBlocked, 10000);
+  } else if (name === "wg") {
     loadWg();
     wgTimer = setInterval(loadWg, 10000);
   } else if (name === "rules") {
@@ -2908,6 +3054,15 @@ function createIfacePicker(button, { instant = false } = {}) {
   return picker;
 }
 
+$("#blk-fold").addEventListener("change", (e) => {
+  blockedFold = e.target.checked;
+  loadBlocked();
+});
+$("#blk-search").addEventListener("input", (e) => {
+  blockedFilter = e.target.value;
+  loadBlocked();
+});
+
 createIfacePicker($("#set-ifaces-btn"));
 createIfacePicker($("#iface-badge"), { instant: true });
 
@@ -3096,7 +3251,8 @@ function initSettingsView() {
   $("#set-reset-cols").addEventListener("click", () => {
     for (const key of ["statedash-col-widths", "statedash-col-order", "statedash-host-hidden",
                        "statedash-conn-widths", "statedash-conn-order", "statedash-conn-hidden",
-                       "statedash-wg-hidden", "statedash-sort", "statedash-conn-sort"]) {
+                       "statedash-wg-hidden", "statedash-sort", "statedash-conn-sort",
+                       "statedash-blk-widths"]) {
       localStorage.removeItem(key);
     }
     location.reload();
@@ -3118,7 +3274,12 @@ for (const item of document.querySelectorAll(".side-item")) {
 }
 initSettingsView();
 const wantView = urlParams.get("view");
-if (["wg", "settings", "rules"].includes(wantView)) switchView(wantView);
+if (["wg", "settings", "rules", "blocked"].includes(wantView)) switchView(wantView);
+
+// The menu entry starts hidden and only appears once the log turns out to be
+// readable, so it has to be probed once at start — otherwise nothing would ever
+// call loadBlocked() and the section could never be reached.
+loadBlocked();
 
 /* ---------- collapsing the side menu ---------- */
 
@@ -3465,6 +3626,13 @@ installColumnResizers(hostsTable, {
   storageKey: "statedash-col-widths",
   onChange: applyColWidths,
 });
+
+installColumnResizers($("#blk-table"), {
+  widths: blkWidths,
+  storageKey: "statedash-blk-widths",
+  onChange: applyBlkWidths,
+});
+applyBlkWidths();
 
 try {
   const savedSort = JSON.parse(localStorage.getItem("statedash-sort"));

@@ -137,6 +137,41 @@ def _is_own_zone(zone: str, nets: list) -> bool:
     return any(net.overlaps(own) for own in nets)
 
 
+# A blocked packet never creates a state, so blocks come from the log rather
+# than the state table. Three kinds, told apart by what is in the record itself
+# rather than by the name of the rule that caught it:
+#
+#   broadcast — sent to a broadcast or multicast address. Neighbouring segments
+#               chatter constantly; this is the bulk of it and worth folding away.
+#   late      — TCP carrying anything but a lone SYN. The connection's state had
+#               already expired, so a reset or a straggler arrived with nowhere
+#               to belong. Common and usually harmless.
+#   attempt   — something actually tried to open a connection and was refused.
+#               The category worth looking at.
+def _block_kind(row: dict) -> str:
+    dst = str(row.get("dst") or "")
+    try:
+        addr = ipaddress.ip_address(dst)
+        if addr.is_multicast:
+            return "broadcast"
+        # the broadcast address of a /24, which is what most local chatter uses
+        if int(addr) & 0xFF == 0xFF:
+            return "broadcast"
+    except ValueError:
+        pass
+    flags = str(row.get("tcpflags") or "")
+    if flags and not (flags == "S" or flags == "SE" or flags == "SEC"):
+        return "late"
+    return "attempt"
+
+
+def _block_key(row: dict) -> tuple:
+    """Groups the same source hitting the same destination and port."""
+    return (str(row.get("src") or ""), str(row.get("dst") or ""),
+            str(row.get("dstport") or ""), str(row.get("protoname") or ""),
+            str(row.get("label") or ""))
+
+
 def _flow_key(row: dict) -> tuple:
     """Connection tuple — the two states of one NAT flow meet on it."""
     return (str(row.get("src_addr") or ""), str(row.get("src_port") or ""),
@@ -384,6 +419,10 @@ class Tracker:
         self.iface_list: list[dict] = []   # OPNsense interfaces (name, label, device)
         self.wg_peers: list[dict] = []
         self.wg_error: str = ""
+        self.blocked: dict[tuple, dict] = {}   # grouped blocks from the firewall log
+        self.blocked_seen: deque = deque(maxlen=20000)  # digests already counted
+        self.blocked_seen_set: set[str] = set()
+        self.blocked_error: str = ""   # 403 when the log privilege is missing
         self.wg_ts: float = 0.0
         self.wg_history: dict[str, deque] = {}  # public_key -> (ts, rx_bps, tx_bps)
         self.rdns: dict[str, tuple[str, float]] = {}  # ip -> (name, when it was resolved)
@@ -437,6 +476,7 @@ class Tracker:
         self._enrich_task = asyncio.create_task(self._enrich_loop())
         self._states_task = asyncio.create_task(self._states_loop())
         self._wg_task = asyncio.create_task(self._wg_loop())
+        self._blocked_task = asyncio.create_task(self._blocked_loop())
 
     async def replace_client(self, client) -> None:
         """Swaps the API client (after the keys change, say) on the fly."""
@@ -595,6 +635,60 @@ class Tracker:
             except Exception as exc:   # no privileges — the section just shows a hint
                 self.rule_config = {"filter": [], "snat": [], "error": str(exc)}
             await asyncio.sleep(settings.get("enrich_seconds"))
+
+    async def _blocked_loop(self) -> None:
+        """Aggregates blocks from the firewall log.
+
+        The log is a firehose — a default deny rule writes on every stray packet
+        — so entries are folded into groups and counted rather than listed. The
+        section stays hidden when the privilege is missing; asking for it is
+        opt-in, like the rest of Statedash's small set.
+        """
+        await asyncio.sleep(2)
+        while True:
+            try:
+                rows = await self.client.firewall_log(limit=settings.get("block_limit"))
+                self.blocked_error = ""
+                now = time.time()
+                for row in rows:
+                    if row.get("action") != "block":
+                        continue
+                    digest = str(row.get("__digest__") or "")
+                    # the same tail of the log comes back on every poll
+                    if digest and digest in self.blocked_seen_set:
+                        continue
+                    if digest:
+                        if len(self.blocked_seen) == self.blocked_seen.maxlen:
+                            self.blocked_seen_set.discard(self.blocked_seen[0])
+                        self.blocked_seen.append(digest)
+                        self.blocked_seen_set.add(digest)
+
+                    key = _block_key(row)
+                    entry = self.blocked.get(key)
+                    if entry is None:
+                        entry = self.blocked[key] = {
+                            "src": key[0], "dst": key[1], "port": key[2],
+                            "proto": key[3], "rule": key[4],
+                            "kind": _block_kind(row),
+                            "iface": str(row.get("interface") or ""),
+                            "count": 0, "first": now, "last": now,
+                        }
+                    entry["count"] += 1
+                    entry["last"] = now
+
+                # groups nobody has added to for a while stop being news
+                cutoff = now - settings.get("block_window")
+                for key in [k for k, v in self.blocked.items() if v["last"] < cutoff]:
+                    del self.blocked[key]
+            except Exception as exc:
+                status = getattr(getattr(exc, "response", None), "status_code", None)
+                if status == 403:
+                    # no privilege: stay quiet and let the interface hide the section
+                    self.blocked_error = "forbidden"
+                else:
+                    self.blocked_error = str(exc)
+                    log.warning("firewall log poll failed: %s", exc)
+            await asyncio.sleep(settings.get("states_seconds"))
 
     async def _states_loop(self) -> None:
         await asyncio.sleep(settings.get("poll_seconds"))

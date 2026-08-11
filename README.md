@@ -86,6 +86,31 @@ appear in “Active hosts” as regular devices.
   <img alt="wireguard" src="docs/statedash-wireguard.png">
 </picture>
 
+### Blocked
+
+What the firewall turned away, and why. This comes from the firewall log rather
+than the state table — a blocked packet never creates a state — and identical
+events are folded into groups, because a default deny rule writes a line for
+every stray packet and a raw list scrolls faster than it reads.
+
+Three kinds, told apart by what is in the record rather than by the name of the
+rule that caught it:
+
+- **Connection attempts** — something tried to open a connection and was
+  refused. The category worth looking at.
+- **Late packets** — TCP carrying anything but a lone SYN: the connection's
+  state had already expired, so a reset or a straggler arrived with nowhere to
+  belong. Common and usually harmless.
+- **Broadcast noise** — sent to a broadcast or multicast address. Neighbouring
+  segments chatter constantly; it is folded away by default.
+
+The section only appears when the privilege above is granted. Without it there
+is no error and no empty page — the entry simply is not in the menu.
+
+Note that Suricata, if you run it, does not appear here. It inspects packet
+contents rather than headers, runs alongside pf rather than inside it, and
+writes to its own log.
+
 ### Settings
 
 - **Interface:** language (Russian/English), theme (system/light/dark), speed
@@ -137,8 +162,9 @@ With `MOCK=1` in `.env` the interface runs on generated data — no OPNsense nee
 | Services: ISC DHCPv4 [legacy]: Leases | names from DHCP leases |
 | Diagnostics: Network Insight | reverse DNS (PTR names) |
 | VPN: WireGuard: Status | the WireGuard section |
+| Diagnostics: Logs: Firewall: Live View | the Blocked section |
 
-The last three are optional: without them the corresponding data simply will
+The last four are optional: without them the corresponding data simply will
 not show up.
 
 ### 2. API key
