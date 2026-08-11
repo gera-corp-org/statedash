@@ -4,6 +4,25 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.3.0 — 2026-08-10
+
+### Added
+
+- **A Blocked section**, showing what the firewall turned away. It reads the
+  firewall log rather than the state table, since a blocked packet never creates
+  a state, and folds identical events into groups — a default deny rule writes a
+  line for every stray packet, and a raw list scrolls faster than it reads.
+- Blocks are split into three kinds, derived from the record itself rather than
+  from the name of the rule that caught them: **connection attempts** that were
+  refused, **late packets** whose connection state had already expired, and
+  **broadcast noise** from neighbouring segments, which is folded away by
+  default.
+- The section needs the **Diagnostics: Logs: Firewall: Live View** privilege and
+  appears only when it is granted. Without it there is no error and no empty
+  page — the entry simply is not in the menu.
+- Columns in the new table can be resized and the widths are remembered, using
+  the same mechanism the other tables share.
+
 ## 1.2.0 — 2026-08-08
 
 ### Added
