@@ -266,6 +266,41 @@ async def host_detail(ip: str):
     return detail
 
 
+@app.get("/api/blocked")
+async def blocked():
+    """Blocked traffic, folded into groups.
+
+    "available" is false when the log privilege is missing, which the interface
+    uses to hide the section rather than show an error for something the
+    operator deliberately did not grant.
+    """
+    if tracker.blocked_error == "forbidden":
+        return {"available": False, "groups": [], "counts": {}}
+
+    groups = []
+    for entry in tracker.blocked.values():
+        service = SERVICES.get(int(entry["port"]) if entry["port"].isdigit() else 0, "")
+        groups.append({
+            **entry,
+            "service": service,
+            "src_country": geo.lookup(entry["src"]),
+            "dst_country": geo.lookup(entry["dst"]),
+        })
+    groups.sort(key=lambda g: (-g["last"], -g["count"]))
+
+    counts = {"attempt": 0, "late": 0, "broadcast": 0}
+    for g in groups:
+        counts[g["kind"]] = counts.get(g["kind"], 0) + g["count"]
+
+    names = await tracker.resolve_names({g["src"] for g in groups} | {g["dst"] for g in groups})
+    for g in groups:
+        g["src_name"] = names.get(g["src"], "")
+        g["dst_name"] = names.get(g["dst"], "")
+
+    return {"available": True, "groups": groups, "counts": counts,
+            "error": tracker.blocked_error}
+
+
 @app.get("/api/rules")
 async def rules():
     """Rule activity plus the configuration itself, when the API exposes it."""

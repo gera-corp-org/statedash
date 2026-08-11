@@ -3,6 +3,7 @@
 Endpoints used:
   GET  /api/diagnostics/traffic/top/<ifaces>      — per-host rates (as in Reporting -> Traffic)
   POST /api/diagnostics/firewall/query_states     — the pf connection table
+  GET  /api/diagnostics/firewall/log             — the firewall log, for blocks
   POST /api/diagnostics/interface/search_arp      — ARP (ip -> mac, hostname)
   POST /api/dhcpv4/leases/searchLease             — DHCP leases (ip -> hostname)
 """
@@ -80,6 +81,14 @@ class OPNsenseClient:
         r.raise_for_status()
         data = r.json()
         rows = data.get("rows", []) if isinstance(data, dict) else []
+        return [row for row in rows if isinstance(row, dict)]
+
+    async def firewall_log(self, limit: int = 1000) -> list[dict]:
+        """Recent firewall log entries (needs Diagnostics: Logs: Firewall: Live View)."""
+        r = await self._client.get("/api/diagnostics/firewall/log", params={"limit": limit})
+        r.raise_for_status()
+        data = r.json()
+        rows = data if isinstance(data, list) else data.get("rows", [])
         return [row for row in rows if isinstance(row, dict)]
 
     async def filter_rules(self) -> list[dict]:

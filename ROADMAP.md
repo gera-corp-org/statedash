@@ -90,12 +90,3 @@ what a monitoring tool is usually wanted for.
 The obstacle is that it turns a service holding a small, replaceable amount of
 state into one holding data that matters — backups, retention, disk growth and
 migrations all follow. Worth doing deliberately, not by accident.
-
-## Showing blocked traffic
-
-Only permitted traffic is visible, because it comes from the pf state table: a
-blocked packet never creates a state. Blocks live in the firewall log, which
-needs its own privilege and a different reading approach.
-
-This is the single largest gap between Statedash and what people expect from a
-firewall dashboard.

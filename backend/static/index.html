@@ -27,6 +27,13 @@
       </svg>
       <span class="side-label" data-i18n="nav.wg">VPN · WireGuard</span>
     </a>
+    <a class="side-item" href="#" data-view="blocked" data-i18n-title="nav.blocked" id="nav-blocked" hidden>
+      <svg class="side-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/>
+        <path d="M8.5 8.5l7 7"/>
+      </svg>
+      <span class="side-label" data-i18n="nav.blocked">Заблокировано</span>
+    </a>
     <a class="side-item" href="#" data-view="rules" data-i18n-title="nav.rules">
       <svg class="side-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M3 5h18l-7 8v6l-4-2v-4z"/>
@@ -177,6 +184,59 @@
       </div>
     </section>
     <footer class="foot" data-i18n="wg.foot">обновление каждые 10 с · «в сети» — хендшейк моложе 3 минут</footer>
+  </div>
+
+  <div id="view-blocked" class="view" hidden>
+    <div class="blk-tiles">
+      <div class="blk-tile blk-attempt">
+        <div class="blk-k" data-i18n="blk.attempt">Попытки соединения</div>
+        <div class="blk-v" id="blk-attempt">—</div>
+        <div class="blk-s" data-i18n="blk.attempt.hint">кто-то пытался открыть соединение и получил отказ</div>
+      </div>
+      <div class="blk-tile">
+        <div class="blk-k" data-i18n="blk.late">Запоздалые пакеты</div>
+        <div class="blk-v" id="blk-late">—</div>
+        <div class="blk-s" data-i18n="blk.late.hint">состояние соединения уже истекло</div>
+      </div>
+      <div class="blk-tile">
+        <div class="blk-k" data-i18n="blk.noise">Широковещательный шум</div>
+        <div class="blk-v" id="blk-noise">—</div>
+        <div class="blk-s" data-i18n="blk.noise.hint">болтовня соседних сегментов</div>
+      </div>
+    </div>
+
+    <section class="card table-card">
+      <div class="card-head">
+        <div class="card-head-left">
+          <h2 data-i18n="blk.title">Заблокировано</h2>
+          <span class="hint-mark" data-i18n-title="blk.hint" title="" aria-hidden="true">?</span>
+        </div>
+        <div class="card-head-right">
+          <label class="conn-filter"><input type="checkbox" id="blk-fold" checked>
+            <span data-i18n="blk.fold">Свернуть шум</span></label>
+          <input id="blk-search" class="search" type="search" data-i18n-ph="blk.search" placeholder="Фильтр: адрес, порт, правило…">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="blk-table" class="conn-table">
+          <colgroup><col><col><col><col><col><col><col><col></colgroup>
+          <thead>
+            <tr>
+              <th data-col="kind"><span class="th-label" data-i18n="blk.col.kind">Вид</span></th>
+              <th data-col="rule"><span class="th-label" data-i18n="blk.col.rule">Правило</span></th>
+              <th data-col="src"><span class="th-label" data-i18n="blk.col.src">Источник</span></th>
+              <th data-col="srcname"><span class="th-label" data-i18n="blk.col.srcname">Имя источника</span></th>
+              <th data-col="dst"><span class="th-label" data-i18n="blk.col.dst">Назначение</span></th>
+              <th data-col="service"><span class="th-label" data-i18n="blk.col.service">Служба</span></th>
+              <th data-col="count"><span class="th-label" data-i18n="blk.col.count">Раз</span></th>
+              <th data-col="last"><span class="th-label" data-i18n="blk.col.last">Последний</span></th>
+            </tr>
+          </thead>
+          <tbody id="blk-body"></tbody>
+        </table>
+      </div>
+      <div id="blk-empty" class="blk-empty" data-i18n="blk.empty" hidden>Пока ничего не блокировалось</div>
+    </section>
   </div>
 
   <div id="view-rules" class="view" hidden>

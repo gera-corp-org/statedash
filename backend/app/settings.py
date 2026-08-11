@@ -29,6 +29,8 @@ SPEC: dict[str, tuple] = {
     "spark_points": ("int", config.SPARK_POINTS, 10, 600),
     "idle_seconds": ("int", 600, 60, 86400),  # how long a silent host stays listed
     "conn_limit": ("int", 500, 50, 5000),     # how many connections we ask OPNsense for
+    "block_limit": ("int", 1000, 100, 10000),  # log entries fetched per poll
+    "block_window": ("int", 3600, 300, 86400), # how long a block group stays listed
 }
 
 DEFAULTS = {key: spec[1] for key, spec in SPEC.items()}
