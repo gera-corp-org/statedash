@@ -65,6 +65,15 @@ The keys inside must be named `OPNSENSE_KEY` and `OPNSENSE_SECRET`.
 | `networkPolicy.enabled` | `false` | Egress policy allowing DNS and `egressCIDRs`. |
 | `resources` | 50m / 128Mi | Requests; the geo database holds about 30 MB of the ~75 MB total. |
 
+## Versions
+
+The chart carries the same number as the application it installs: chart 1.3.0
+installs Statedash 1.3.0. Releasing the application publishes the chart in the
+same step, so the two cannot drift apart.
+
+A fix touching only the templates is released as `chart-X.Y.Z` and keeps
+whatever `appVersion` the chart already names.
+
 ## Things worth knowing
 
 **One replica.** Each pod polls the firewall on its own and keeps rate history
