@@ -4,6 +4,18 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.4.0 — 2026-08-13
+
+### Changed
+
+- **The rate columns on Hosts name their unit.** Receive, Transmit and both peak
+  columns now read "Receive kbit/s" rather than "Receive", so a figure is no
+  longer a bare number whose meaning lives in a dropdown elsewhere on the page.
+  The unit sits in the header rather than beside every figure: repeated in the
+  cells it breaks the right alignment those columns exist for, since the numbers
+  then end at different places depending on the label. It follows both the
+  Speed selector and the interface language.
+
 ## 1.3.0 — 2026-08-10
 
 ### Added
