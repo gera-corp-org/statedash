@@ -892,3 +892,6 @@ button.legend-item.legend-off { opacity: .38; }
   padding: 22px 4px; text-align: center;
   color: var(--text-muted); font-size: 13px;
 }
+
+/* the unit in a rate column header: present but recessive, so the name reads first */
+.th-unit { font-size: 11px; color: var(--text-muted); font-weight: 400; }

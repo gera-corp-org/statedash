@@ -775,6 +775,10 @@ function fmtRate(bps) {
   return Math.round(value).toLocaleString(locale()); // whole numbers only — no decimal commas
 }
 
+function rateUnitShort() {
+  return t(rateUnit === "kbyte" ? "unit.kbyte.short" : "unit.kbit.short");
+}
+
 function fmtMB(bytes) {
   return Math.round(bytes / 1048576).toLocaleString(locale());
 }
@@ -3344,13 +3348,24 @@ document.addEventListener("keydown", (event) => {
 const rateUnitSelect = $("#rate-unit");
 
 function applyRateUnitLabels() {
-  // the unit lives in the "Speed" selector above the table, so the header only
-  // carries it as a tooltip — spelling it out truncated the label itself
-  const unit = t(rateUnit === "kbyte" ? "unit.kbyte.short" : "unit.kbit.short");
-  for (const key of ["down", "up"]) {
+  // The unit rides in the header rather than in every cell: repeated in the
+  // cells it breaks the right alignment the numeric columns exist for, since
+  // figures then end at different places depending on the label. Spelling it
+  // out here used to truncate the label, which is why the columns below carry
+  // a measured width.
+  const unit = rateUnitShort();
+  for (const key of ["down", "up", "peakdown", "peakup"]) {
     const th = $(`th[data-sort="${key}"]`);
-    th.querySelector(".th-label").textContent = t("col." + key);
+    if (!th) continue;
+    const label = th.querySelector(".th-label");
+    label.textContent = t("col." + key);
     th.title = `${t("col." + key)} [${unit}]`;
+    let unitEl = label.nextElementSibling;
+    if (!unitEl || !unitEl.classList.contains("th-unit")) {
+      unitEl = Object.assign(document.createElement("span"), { className: "th-unit" });
+      label.after(unitEl);
+    }
+    unitEl.textContent = "\u00a0" + unit;
   }
 }
 
@@ -3546,7 +3561,14 @@ const HOST_HIDDEN_DEFAULT = ["iface", "vendor", "peer", "dests", "peakdown", "pe
 let hostHiddenCols = loadHiddenSet("statedash-host-hidden", DEFAULT_ORDER);
 if (!localStorage.getItem("statedash-host-hidden")) hostHiddenCols = new Set(HOST_HIDDEN_DEFAULT);
 
-const colWidths = {};   // {key: px}
+// Rate columns carry a unit as well as a figure, and under table-layout: fixed
+// an unset width leaves them too narrow for both. Everything else still sizes
+// itself; a width the user drags overrides these.
+// Measured against the longest case — Russian labels with "Кбит/с" — plus room
+// for the sort arrow and the resize grip. English needs less and simply gets a
+// roomier column.
+const RATE_COL_W = { down: 128, up: 150, peakdown: 164, peakup: 178 };
+const colWidths = { ...RATE_COL_W };   // {key: px}
 let colOrder = DEFAULT_ORDER.slice();
 try {
   const savedW = JSON.parse(localStorage.getItem("statedash-col-widths"));
