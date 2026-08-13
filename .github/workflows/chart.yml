@@ -47,9 +47,24 @@ jobs:
         if: "!startsWith(github.ref, 'refs/tags/v')"
         run: |
           # appVersion has to name a real image, or an install pulls nothing
-          app=$(helm show chart charts/statedash | awk '/^appVersion:/ {print $2}' | tr -d '"')
-          echo "appVersion: $app"
-          docker manifest inspect "ghcr.io/${{ github.repository }}:$app" > /dev/null
+          meta=$(helm show chart charts/statedash)
+          app=$(echo "$meta" | awk '/^appVersion:/ {print $2}' | tr -d '"')
+          ver=$(echo "$meta" | awk '/^version:/ {print $2}' | tr -d '"')
+          echo "appVersion: $app, chart: $ver"
+          if docker manifest inspect "ghcr.io/${{ github.repository }}:$app" > /dev/null 2>&1; then
+            exit 0
+          fi
+          # A release raises both numbers together and the image is built from
+          # the tag pushed after the merge, so on that pull request the image is
+          # supposed to be missing. Anywhere else a missing one is the mistake
+          # this step exists to catch — including a chart-only fix, which must
+          # keep pointing at a release that was actually built.
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "$app" = "$ver" ]; then
+            echo "no image for $app yet — release in progress"
+            exit 0
+          fi
+          echo "::error::the chart names appVersion $app, which has no image"
+          exit 1
 
       # a pull request only checks; it never pushes
       - name: Log in to ${{ env.REGISTRY }}
