@@ -111,6 +111,11 @@ Note that Suricata, if you run it, does not appear here. It inspects packet
 contents rather than headers, runs alongside pf rather than inside it, and
 writes to its own log.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-blocked-dark.png">
+  <img alt="blocked" src="docs/statedash-blocked.png">
+</picture>
+
 ### Settings
 
 - **Interface:** language (Russian/English), theme (system/light/dark), speed
@@ -134,7 +139,9 @@ writes to its own log.
 ### Across the interface
 
 Tables in every section behave the same: sorting, column reordering, resizing,
-showing and hiding columns — all remembered in the browser. There is a dark
+showing and hiding columns — all remembered in the browser. Long lists are
+paged, fifty rows at a time; sorting and filtering run across the whole list
+rather than the page in front of you. There is a dark
 theme, two languages, a mobile layout (the first column sticks during
 horizontal scrolling) and deep links: `?host=IP&tab=conns`,
 `?view=rules|wg|settings`, `?theme=dark`, `?lang=en`.
@@ -205,6 +212,8 @@ survive a rebuild of the container.
 | `DIRECTION_SWAP` | 0 | swap receive and transmit |
 | `HISTORY_POINTS` | 450 | chart history points (450×2s = 15 min) |
 | `SPARK_POINTS` | 90 | sparkline points |
+| `MOCK_HOSTS` | 0 | size of the invented network in mock mode (0 = the fixed set) |
+| `DEMO` | 0 | public demonstration: everything visible, nothing writable |
 
 ## How it works
 

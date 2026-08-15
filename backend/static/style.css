@@ -924,3 +924,11 @@ tbody tr[data-flip] { will-change: transform; }
 @media (prefers-reduced-motion: reduce) {
   tbody tr.host-row, .conn-table tbody tr { transition: none; }
 }
+
+/* the notice at the top of Settings on a public demonstration */
+.demo-note {
+  margin: 0 0 16px; padding: 10px 14px; border-radius: 8px;
+  background: var(--hover); color: var(--text-muted);
+  border-left: 3px solid var(--accent); font-size: 13px; line-height: 1.5;
+}
+body.demo #view-settings :disabled { opacity: .6; }

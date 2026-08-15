@@ -58,6 +58,8 @@ The keys inside must be named `OPNSENSE_KEY` and `OPNSENSE_SECRET`.
 | `polling.names` | `60` | Seconds between name refreshes (ARP, DHCP, reverse DNS). |
 | `directionSwap` | `false` | Set true if download and upload appear swapped. |
 | `mock` | `false` | Generated data instead of a firewall. |
+| `mockHosts` | `0` | Size of the invented network; 0 keeps the small fixed set. |
+| `demo` | `false` | Public demonstration: everything visible, nothing writable. |
 | `persistence.enabled` | `true` | Keep settings.json across restarts. |
 | `persistence.size` | `64Mi` | Claim size; the file is a few kilobytes. |
 | `persistence.existingClaim` | `""` | Use a claim you made yourself. |

@@ -48,6 +48,8 @@ const I18N = {
     "nav.hosts": "Активные хосты",
     "nav.settings": "Настройки",
     "set.access": "Доступ",
+    "demo.note": "Витрина: настройки видны, но менять их нельзя — они общие для всех, кто сейчас смотрит. Тема, язык и единицы измерения ваши личные и работают.",
+    "err.demo_read_only": "Витрина работает только на чтение",
     "set.listen": "Веб-интерфейс слушает",
     "set.listen.only": "Только эта машина (127.0.0.1)",
     "set.listen.all": "Вся сеть (0.0.0.0)",
@@ -370,6 +372,8 @@ const I18N = {
     "nav.hosts": "Active hosts",
     "nav.settings": "Settings",
     "set.access": "Access",
+    "demo.note": "A demonstration: the settings are visible but cannot be changed — they are shared by everyone looking. Theme, language and units are yours alone and do work.",
+    "err.demo_read_only": "The demonstration is read-only",
     "set.listen": "Web interface listens on",
     "set.listen.only": "This machine only (127.0.0.1)",
     "set.listen.all": "Whole network (0.0.0.0)",
@@ -1153,6 +1157,7 @@ async function poll() {
     state.firewallIps = new Set(data.firewall_ips || []);
     $("#poll-int").textContent = String(data.poll_seconds || 2);
     $("#mock-badge").hidden = !data.mock;
+    if (data.demo && !state.demo) { state.demo = true; applyDemoMode(); }
     const ver = $("#side-version");
     if (ver && data.version && ver.textContent !== data.version) {
       ver.textContent = data.version;
@@ -1281,6 +1286,34 @@ function updateSortIndicators() {
     const active = th.dataset.sort === state.sort.key;
     th.classList.toggle("sorted", active);
     if (active) th.dataset.dir = state.sort.dir; else delete th.dataset.dir;
+  }
+}
+
+/* ---------- public demonstration ---------- */
+
+// Settings that live on the server are shared by everyone looking at a public
+// instance, so they are shown but locked. The ones kept in the browser — theme,
+// language, units, column layout — belong to the visitor and stay usable, which
+// is half of what there is to try out.
+const DEMO_LOCKED = [
+  "set-ifaces-btn", "set-poll", "set-states", "set-enrich", "set-history",
+  "set-spark", "set-idle", "set-connlimit", "set-swap", "set-save", "set-defaults",
+  "set-reset-all", "set-pw-current", "set-pw-new", "set-pw-save", "set-pw-off",
+  "set-listen-select", "set-url", "set-tls", "set-key", "set-secret", "set-cred-save",
+];
+
+function applyDemoMode() {
+  document.body.classList.add("demo");
+  for (const id of DEMO_LOCKED) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  }
+  const view = $("#view-settings");
+  if (view && !$("#demo-note")) {
+    const note = Object.assign(document.createElement("p"), {
+      id: "demo-note", className: "demo-note", textContent: t("demo.note"),
+    });
+    view.prepend(note);
   }
 }
 

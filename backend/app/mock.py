@@ -4,6 +4,8 @@ from __future__ import annotations
 import random
 import time
 
+from . import config
+
 _HOSTS = [
     ("192.168.1.10", "nas", "aa:bb:cc:00:00:10"),
     ("192.168.1.21", "desktop-pc", "aa:bb:cc:00:00:21"),
@@ -19,6 +21,18 @@ _HOSTS = [
     ("10.0.0.12", "phone-vpn", ""),
 ]
 
+# A demonstration wants a crowd: paging and the spread on the chart only show
+# up once there are more than a dozen devices. The fixed set above stays the
+# default, so the ordinary mock is unchanged.
+_KINDS = ["laptop", "phone", "tablet", "camera", "tv", "printer", "sensor",
+          "nas", "workstation", "access-point", "voip", "thermostat"]
+for _i in range(max(config.MOCK_HOSTS - len(_HOSTS), 0)):
+    _HOSTS.append((
+        f"192.168.{2 + _i // 250}.{10 + _i % 250}",
+        "" if _i % 9 == 0 else f"{_KINDS[_i % len(_KINDS)]}-{_i:03d}",
+        f"aa:bb:cc:{(_i >> 8) & 255:02x}:{_i & 255:02x}:{(_i * 7) & 255:02x}",
+    ))
+
 _REMOTES = [
     ("142.250.74.78", 443, "tcp"),
     ("104.16.132.229", 443, "tcp"),
@@ -32,8 +46,9 @@ _REMOTES = [
 
 class MockClient:
     def __init__(self) -> None:
-        # random walk: every host has its own "base" rate
-        self._levels = {ip: [random.uniform(1e4, 5e6), random.uniform(1e4, 8e5)] for ip, _, _ in _HOSTS}
+        # random walk around a base rate that is each host's own
+        self._base = {ip: [random.uniform(1e4, 5e6), random.uniform(1e4, 8e5)] for ip, _, _ in _HOSTS}
+        self._levels = {ip: list(rates) for ip, rates in self._base.items()}
         self._cum = {ip: [0.0, 0.0] for ip, _, _ in _HOSTS}
         self._last = time.time()
 
@@ -75,6 +90,51 @@ class MockClient:
     async def kill_states(self, address: str) -> dict:
         return {"result": "ok", "dropped_states": 3}
 
+    # Scanners knocking on ports nobody opened, the ordinary shape of what a
+    # WAN-facing firewall drops all day.
+    _SCANNERS = [
+        ("45.155.205.233", 22, "tcp"), ("185.220.101.34", 3389, "tcp"),
+        ("193.32.162.10", 445, "tcp"), ("89.248.165.74", 23, "tcp"),
+        ("141.98.11.29", 1433, "tcp"), ("80.94.95.115", 8080, "tcp"),
+    ]
+
+    async def firewall_log(self, limit: int = 1000) -> list[dict]:
+        """Blocked packets, in the three shapes the log really produces.
+
+        Attempts arrive from outside as a lone SYN, late packets carry other
+        flags because the state they belonged to has already expired, and the
+        rest is the broadcast and multicast chatter of neighbouring segments.
+        The classifier reads those apart from the record itself, so the mock has
+        to differ in the same fields rather than in a label.
+        """
+        rows = []
+        for _ in range(min(limit, random.randint(40, 90))):
+            kind = random.choices(["attempt", "late", "broadcast"], weights=[3, 2, 5])[0]
+            if kind == "attempt":
+                src, port, proto = random.choice(self._SCANNERS)
+                row = {"src": src, "dst": "203.0.113.7", "dstport": str(port),
+                       "protoname": proto, "tcpflags": "S", "interface": "wan"}
+            elif kind == "late":
+                src, port, proto = random.choice(_REMOTES)
+                row = {"src": src, "dst": "203.0.113.7", "dstport": str(port),
+                       "protoname": proto, "tcpflags": random.choice(["FA", "RA", "A"]),
+                       "interface": "wan"}
+            else:
+                dst, port = random.choice([("192.168.1.255", 137), ("239.255.255.250", 1900),
+                                           ("224.0.0.251", 5353), ("192.168.1.255", 5678)])
+                row = {"src": random.choice(_HOSTS)[0], "dst": dst, "dstport": str(port),
+                       "protoname": "udp", "tcpflags": "", "interface": "lan"}
+            row["action"] = "block"
+            # an explicit rule reports its own label; the implicit default deny
+            # has none, which is what most of the log is
+            row["label"] = ("Block port scanners" if kind == "attempt" and random.random() < 0.5
+                            else "")
+            # the real log gives every line one; the poller uses it to skip the
+            # tail it has already counted
+            row["__digest__"] = f"{random.getrandbits(64):016x}"
+            rows.append(row)
+        return rows
+
     async def interfaces(self) -> list[dict]:
         return [{"name": "lan", "label": "LAN", "device": "vtnet0"},
                 {"name": "wan", "label": "WAN", "device": "em0"},
@@ -96,8 +156,15 @@ class MockClient:
             if iface not in wanted:
                 continue
             level = self._levels[ip]
+            base = self._base[ip]
             for i in (0, 1):
-                level[i] = max(1e3, min(level[i] * random.uniform(0.7, 1.35), 9e7))
+                # A plain multiplicative walk drifts upward without bound: the
+                # bursts below multiply and nothing ever brings them back, so
+                # after a few minutes every host sits pinned at the ceiling and
+                # the totals read in gigabits. Pulling towards the host's own
+                # base rate keeps the numbers looking like a network.
+                pull = (base[i] / level[i]) ** 0.25
+                level[i] = max(1e3, min(level[i] * random.uniform(0.7, 1.35) * pull, 9e7))
             if random.random() < 0.05:  # occasional "download" bursts
                 level[0] *= 10
             self._cum[ip][0] += level[0] / 8 * dt

@@ -33,6 +33,13 @@ directionSwap: false
 
 # generated data instead of a real firewall, to try the interface out
 mock: false
+# Number of invented hosts in mock mode; 0 keeps the small fixed set. A public
+# demonstration wants a crowd — paging and the spread on the chart need one.
+mockHosts: 0
+# A public demonstration: everything is visible, nothing can be changed. Without
+# it the first visitor to an instance with no password set can give it one and
+# lock everybody else out.
+demo: false
 
 # --- storage ----------------------------------------------------------------
 # Holds settings.json: the password hash and any setting changed in the web

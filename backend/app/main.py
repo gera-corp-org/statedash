@@ -66,6 +66,21 @@ async def no_cache_static(request: Request, call_next):
 
 
 @app.middleware("http")
+async def demo_read_only(request: Request, call_next):
+    """On a public demonstration everything is visible and nothing is writable.
+
+    Browsing needs nothing but GET, so refusing the rest costs a visitor nothing
+    and closes the whole surface at once: settings that are shared by everyone
+    looking, the credentials, the state-killing actions, and setting a password
+    on an instance that has none — which anybody could otherwise do, since that
+    is how an owner sets the first one.
+    """
+    if config.DEMO and request.method not in ("GET", "HEAD", "OPTIONS"):
+        return JSONResponse({"detail": "err.demo_read_only"}, status_code=403)
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def require_auth(request: Request, call_next):
     if not auth.enabled() or request.url.path.startswith(OPEN_PATHS):
         return await call_next(request)
