@@ -170,8 +170,15 @@ async def put_credentials(payload: dict):
 
 
 @app.get("/api/hosts")
-async def hosts():
-    return tracker.snapshot()
+async def hosts(spark: str | None = None):
+    """Everything the dashboard polls, once every poll_seconds.
+
+    `spark` is a comma separated list of the hosts whose sparkline is on screen;
+    the others come back without one, which is most of the payload on a large
+    network. Leaving the parameter out keeps every line.
+    """
+    wanted = None if spark is None else {ip for ip in spark.split(",") if ip}
+    return tracker.snapshot(wanted)
 
 
 @app.get("/api/interfaces")

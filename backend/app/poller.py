@@ -791,9 +791,18 @@ class Tracker:
             "peers": self.wg_peers,
         }
 
-    def snapshot(self) -> dict:
+    def snapshot(self, spark_for: set[str] | None = None) -> dict:
+        """A full picture for the dashboard.
+
+        `spark_for` names the hosts whose sparkline is actually on screen. The
+        line is by far the heaviest thing a host carries — ninety pairs against
+        a few short fields — and only the rows of the current page can show one,
+        so the rest are sent without it. Passing nothing keeps every line, which
+        is what anything reading the API directly gets.
+        """
         now = time.time()
         hosts = []
+        points = settings.get("spark_points")
         watched = _iface_set(settings.get("ifaces"))
         for host in self.hosts.values():
             # drop hosts that have been silent for more than 10 minutes
@@ -804,6 +813,9 @@ class Tracker:
             # minutes. Hide it at once when none of its interfaces is watched.
             if host.ifaces and not (host.ifaces & watched):
                 continue
+            window = [[down, up] for _, down, up in list(host.history)[-points:]]
+            peak_down = max((point[0] for point in window), default=0)
+            peak_up = max((point[1] for point in window), default=0)
             hosts.append({
                 "ip": host.ip,
                 "name": host.name,
@@ -824,7 +836,13 @@ class Tracker:
                 "total_down": host.total_down,
                 "total_up": host.total_up,
                 "active": now - host.last_seen < settings.get("poll_seconds") * 3,
-                "spark": [[down, up] for _, down, up in list(host.history)[-settings.get("spark_points"):]],
+                # Peaks are read off the same window the sparkline covers. They
+                # are computed here rather than on the client because sorting by
+                # them has to work across every host, including the ones whose
+                # line was left out above.
+                "peak_down": peak_down,
+                "peak_up": peak_up,
+                "spark": window if spark_for is None or host.ip in spark_for else [],
             })
         hosts.sort(key=lambda h: h["down"] + h["up"], reverse=True)
         return {

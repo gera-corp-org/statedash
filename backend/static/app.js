@@ -320,6 +320,8 @@ const I18N = {
     "conn.none": "Активных соединений нет",
     "conn.failed": "Не удалось получить соединения: ",
     "conn.limit": "Показаны первые 300 из {n}",
+    "pager.range": "Показано {a}–{b} из {n}",
+    "pager.page": "Стр. {p} / {t}",
     "conn.notunnel": "Не удалось определить туннельный IP пира (нет IPv4 в Allowed IPs)",
     "wg.title": "WireGuard — пиры",
     "wg.name": "Имя",
@@ -640,6 +642,8 @@ const I18N = {
     "conn.none": "No active connections",
     "conn.failed": "Failed to load connections: ",
     "conn.limit": "Showing first 300 of {n}",
+    "pager.range": "Showing {a}–{b} of {n}",
+    "pager.page": "Page {p} / {t}",
     "conn.notunnel": "Cannot determine the peer's tunnel IP (no IPv4 in Allowed IPs)",
     "wg.title": "WireGuard — peers",
     "wg.name": "Name",
@@ -684,6 +688,10 @@ function tf(key, n) {
   return t(key).replace("{n}", n);
 }
 
+function tp(key, vars) {
+  return Object.entries(vars).reduce((s, [k, v]) => s.replace("{" + k + "}", v), t(key));
+}
+
 function locale() {
   return lang === "en" ? "en-US" : "ru-RU";
 }
@@ -712,6 +720,8 @@ const state = {
   sort: { key: "rate", dir: "desc" },  // rate = download + upload (the default)
   tableHover: false,    // while the cursor is over the table rows are not reordered
   rows: new Map(),      // ip -> table row elements
+  sparkIps: [],         // hosts on the current page — the only ones needing a sparkline
+  sparkCache: new Map(),// ip -> last line seen, so paging back does not blank it
   selectedIp: null,
   selectedWg: null,     // public_key of the selected WireGuard peer
   selectedRule: null,   // key of the selected firewall rule
@@ -721,6 +731,48 @@ const state = {
   detail: null,         // latest /api/host/{ip}/detail response
   deepLinkDone: false,
 };
+
+/* ---------- pagination ---------- */
+
+const PAGE_SIZE = 50;        // hosts & blocked
+const CONN_PAGE_SIZE = 100;  // connections
+
+const pageState = { hosts: 1, conns: 1, blocked: 1 };
+let lastConnTarget = null;
+
+// clamps the current page into [1, ceil(n/size)] and returns the slice bounds
+function pageBounds(key, totalItems, size) {
+  const total = Math.max(1, Math.ceil(totalItems / size));
+  if (pageState[key] > total) pageState[key] = total;
+  const start = (pageState[key] - 1) * size;
+  return { page: pageState[key], total, start, end: Math.min(start + size, totalItems) };
+}
+
+// a prev/next pager with a "X–Y из N" counter; hidden while everything fits on one page
+function renderPager(container, key, totalItems, size, onNavigate) {
+  const { page, total, start, end } = pageBounds(key, totalItems, size);
+  container.replaceChildren();
+  container.hidden = totalItems <= size;
+  if (container.hidden) return;
+
+  const btn = (label, target, enabled) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pager-btn";
+    b.textContent = label;
+    b.disabled = !enabled;
+    if (enabled) b.addEventListener("click", () => { pageState[key] = target; onNavigate(); });
+    return b;
+  };
+  const range = document.createElement("span");
+  range.className = "pager-range";
+  range.textContent = tp("pager.range", { a: start + 1, b: end, n: totalItems });
+  const pages = document.createElement("span");
+  pages.className = "pager-pages";
+  pages.textContent = tp("pager.page", { p: page, t: total });
+
+  container.append(btn("‹", page - 1, page > 1), range, pages, btn("›", page + 1, page < total));
+}
 
 /* ---------- formatting ---------- */
 
@@ -789,15 +841,6 @@ function fmtDuration(seconds) {
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
   return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
-}
-
-function peakOf(spark) {
-  let down = 0, up = 0;
-  for (const point of spark || []) {
-    if (point[0] > down) down = point[0];
-    if (point[1] > up) up = point[1];
-  }
-  return [down, up];
 }
 
 function cssVar(name) {
@@ -1079,13 +1122,32 @@ const histoChart = timeChart($("#histo-chart"), $("#histo-tip"));
 
 /* ---------- backend polling ---------- */
 
+// The next poll is always scheduled through here, so asking for one early —
+// after a page change brings different hosts on screen — replaces the pending
+// timer instead of starting a second chain of them.
+let pollTimer = null;
+function schedulePoll(ms) {
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(poll, ms);
+}
+
 async function poll() {
   try {
-    const res = await fetch("/api/hosts");
+    // Only the rows on screen can show a sparkline, and the line is most of a
+    // host's weight, so the backend is told which ones to send.
+    const res = await fetch("/api/hosts?spark=" + encodeURIComponent(state.sparkIps.join(",")));
     if (res.status === 401) { location.href = "/login"; return; }  // session expired
     const data = await res.json();
     state.pollMs = Math.max((data.poll_seconds || 2) * 1000, 1000);
     state.hosts = data.hosts || [];
+    // A host that scrolled off the page keeps its last known line until it is
+    // asked for again, so switching pages back and forth does not blink.
+    const cache = new Map();
+    for (const host of state.hosts) {
+      if (!host.spark || !host.spark.length) host.spark = state.sparkCache.get(host.ip) || [];
+      if (host.spark.length) cache.set(host.ip, host.spark);
+    }
+    state.sparkCache = cache;  // hosts that are gone drop out with it
     state.totals = data.totals || [];
     state.ifaceTotals = data.iface_totals || {};
     state.firewallIps = new Set(data.firewall_ips || []);
@@ -1121,7 +1183,7 @@ async function poll() {
     banner.textContent = t("err.backend") + err.message;
     banner.hidden = false;
   } finally {
-    setTimeout(poll, state.pollMs);
+    schedulePoll(state.pollMs);
   }
 }
 
@@ -1191,8 +1253,8 @@ function sortValue(host, key) {
     case "vendor": return (host.vendor || "").toLowerCase();
     case "peer": return (host.top_peer_name || host.top_peer_ip || "").toLowerCase();
     case "dests": return host.dests || 0;
-    case "peakdown": return peakOf(host.spark)[0];
-    case "peakup": return peakOf(host.spark)[1];
+    case "peakdown": return host.peak_down || 0;
+    case "peakup": return host.peak_up || 0;
     case "total_down": return host.total_down;
     case "total_up": return host.total_up;
     default: return host.down + host.up;
@@ -1222,36 +1284,149 @@ function updateSortIndicators() {
   }
 }
 
+/* ---------- reordering rows without them jumping ---------- */
+
+const REORDER_MS = 280;
+let flipPass = 0;
+// browsers land rows on fractional pixels, so anything under half a pixel is
+// not a move worth animating
+const MOVE_EPSILON = 0.5;
+
+function motionOff() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * Run `mutate`, which reorders (and may add or drop) rows, and animate the
+ * distance each surviving row travelled.
+ *
+ * Moving a row with appendChild puts it in its new place at once, which on a
+ * table that resorts itself every couple of seconds reads as a flicker. So the
+ * position of every row is taken first, the mutation is allowed to happen, and
+ * each row is then translated back to where it was and released — the browser
+ * animates it home. Reads and writes are kept in separate passes, so the whole
+ * thing costs two layouts rather than two per row.
+ */
+function flipRows(rows, mutate) {
+  const before = flipCapture(rows);
+  mutate();
+  flipPlay(before);
+}
+
+/** Where the rows are now. Must be called while they are still on screen. */
+function flipCapture(rows) {
+  if (motionOff()) return null;
+  const before = new Map();
+  for (const tr of Array.from(rows)) before.set(tr, tr.getBoundingClientRect().top);
+  return before;
+}
+
+/** Animate each row from where `flipCapture` saw it to where it now is. */
+function flipPlay(before) {
+  if (!before) return;
+
+  // Drop any transform still running from a previous pass before measuring, or
+  // the new positions would be read through the old animation. Taking the start
+  // positions above *with* the transform applied is deliberate: a row caught
+  // mid-flight carries on from where it is instead of snapping.
+  for (const tr of before.keys()) {
+    tr.style.transition = "none";
+    tr.style.transform = "";
+  }
+
+  const moves = [];
+  for (const [tr, top] of before) {
+    if (!tr.isConnected) continue;  // dropped by the mutation
+    const delta = top - tr.getBoundingClientRect().top;
+    if (Math.abs(delta) > MOVE_EPSILON) moves.push([tr, delta]);
+  }
+  if (!moves.length) {
+    // nothing travelled, so put back the transitions the measurement suspended
+    for (const tr of before.keys()) tr.style.transition = "";
+    return;
+  }
+
+  for (const [tr, delta] of moves) tr.style.transform = `translateY(${delta}px)`;
+  requestAnimationFrame(() => {
+    for (const [tr] of moves) {
+      tr.style.transition = `transform ${REORDER_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+      tr.style.transform = "";
+    }
+  });
+  // Every row touched here is stamped with this pass. Two tables animate on
+  // their own schedules and a table can start a second pass before the first
+  // has finished — clearing up by row rather than by timer means one pass never
+  // strips the inline styles another one is still using.
+  const pass = ++flipPass;
+  const touched = Array.from(before.keys());
+  for (const tr of touched) tr.dataset.flip = pass;
+  setTimeout(() => {
+    for (const tr of touched) {
+      if (Number(tr.dataset.flip) !== pass) continue;  // a later pass owns it now
+      tr.style.transition = "";
+      tr.style.transform = "";
+      delete tr.dataset.flip;
+    }
+  }, REORDER_MS + 60);
+}
+
+// A row that has just appeared has no previous position to travel from, so it
+// fades in on the spot instead.
+function markEntering(tr) {
+  if (motionOff()) return;
+  tr.classList.add("row-enter");
+  requestAnimationFrame(() => requestAnimationFrame(() => tr.classList.remove("row-enter")));
+}
+
 function renderTable(forceReorder = false) {
   const tbody = $("#hosts-body");
   const visible = state.hosts.filter(hostMatches).sort(compareHosts);
   $("#empty-note").hidden = visible.length > 0;
 
-  const keep = new Set(visible.map((h) => h.ip));
-  for (const [ip, row] of state.rows) {
-    if (!keep.has(ip)) {
-      row.tr.remove();
-      state.rows.delete(ip);
-    }
+  // only the current page's rows stay in the DOM — the rest is dropped
+  const { start, end } = pageBounds("hosts", visible.length, PAGE_SIZE);
+  const pageRows = visible.slice(start, end);
+  renderPager($("#hosts-pager"), "hosts", visible.length, PAGE_SIZE, () => renderTable(true));
+
+  // Tell the next poll which sparklines are wanted. When the page changes the
+  // new rows have no line yet, so one is asked for straight away rather than at
+  // the next tick — otherwise a fresh page draws blank for a couple of seconds.
+  const wanted = pageRows.map((h) => h.ip);
+  if (wanted.join() !== state.sparkIps.join()) {
+    state.sparkIps = wanted;
+    if (pageRows.some((h) => !h.spark.length)) schedulePoll(0);
   }
 
-  for (const host of visible) {
-    let row = state.rows.get(host.ip);
-    if (!row) {
-      row = buildRow(host.ip);
-      state.rows.set(host.ip, row);
-      tbody.appendChild(row.tr); // a new row goes to the end; sorting will place it
+  // Everything that moves rows about happens inside one pass, so a row leaving
+  // and the rows closing up behind it are part of the same animation.
+  flipRows(tbody.children, () => {
+    const keep = new Set(pageRows.map((h) => h.ip));
+    for (const [ip, row] of state.rows) {
+      if (!keep.has(ip)) {
+        row.tr.remove();
+        state.rows.delete(ip);
+      }
     }
-    updateRow(row, host);
-  }
 
-  // rows are reordered only when the order actually changed and the cursor is not
-  // over the table (otherwise a row slides out from under the click)
-  const current = Array.from(tbody.children, (tr) => tr.dataset.ip);
-  const changed = visible.length !== current.length || visible.some((h, i) => h.ip !== current[i]);
-  if (changed && (forceReorder || !state.tableHover)) {
-    for (const host of visible) tbody.appendChild(state.rows.get(host.ip).tr);
-  }
+    for (const host of pageRows) {
+      let row = state.rows.get(host.ip);
+      if (!row) {
+        row = buildRow(host.ip);
+        state.rows.set(host.ip, row);
+        tbody.appendChild(row.tr); // a new row goes to the end; sorting will place it
+        markEntering(row.tr);
+      }
+      updateRow(row, host);
+    }
+
+    // rows are reordered only when the order actually changed and the cursor is not
+    // over the table (otherwise a row slides out from under the click)
+    const current = Array.from(tbody.children, (tr) => tr.dataset.ip);
+    const changed = pageRows.length !== current.length || pageRows.some((h, i) => h.ip !== current[i]);
+    if (changed && (forceReorder || !state.tableHover)) {
+      for (const host of pageRows) tbody.appendChild(state.rows.get(host.ip).tr);
+    }
+  });
 }
 
 function buildRow(ip) {
@@ -1340,9 +1515,8 @@ function updateRow(row, host) {
     row.peerEl.title = "";
   }
   row.destsEl.textContent = host.dests ? String(host.dests) : "—";
-  const peaks = peakOf(host.spark);
-  row.peakDownEl.textContent = fmtRate(peaks[0]);
-  row.peakUpEl.textContent = fmtRate(peaks[1]);
+  row.peakDownEl.textContent = fmtRate(host.peak_down || 0);
+  row.peakUpEl.textContent = fmtRate(host.peak_up || 0);
   row.downEl.textContent = fmtRate(host.down);
   row.upEl.textContent = fmtRate(host.up);
   row.tdownEl.textContent = fmtMB(host.total_down);
@@ -1352,19 +1526,35 @@ function updateRow(row, host) {
   drawSpark(row.sparkCanvas, host.spark);
 }
 
+// Every sparkline sits in the same column and every row is the same height, so
+// the size is measured once for the whole table instead of once per row.
+// Measuring is a forced layout, and interleaved with the writes updateRow makes
+// it was the single most expensive thing on the page. `invalidateSparkBox`
+// below clears it whenever the column can have changed width.
+let sparkBox = null;
+
+function invalidateSparkBox() {
+  sparkBox = null;
+}
+
 function drawSpark(canvas, spark) {
+  if (!sparkBox) {
+    const rect = canvas.getBoundingClientRect();
+    // a zero width is cached too: with the column hidden the rest of the rows
+    // then bail out without measuring anything
+    sparkBox = { w: rect.width, h: rect.height };
+  }
+  const { w, h } = sparkBox;
+  if (!w || !spark.length) return;
   const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  if (!rect.width || !spark.length) return;
-  const width = Math.round(rect.width * dpr);
-  const height = Math.round(rect.height * dpr);
+  const width = Math.round(w * dpr);
+  const height = Math.round(h * dpr);
   if (canvas.width !== width || canvas.height !== height) {
     canvas.width = width;
     canvas.height = height;
   }
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const w = rect.width, h = rect.height;
   ctx.clearRect(0, 0, w, h);
   const maxVal = Math.max(...spark.map((p) => Math.max(p[0], p[1])), 1000);
   const x = (i) => (i / Math.max(spark.length - 1, 1)) * (w - 2) + 1;
@@ -1597,6 +1787,7 @@ function renderGeneral() {
 /* ---------- connections ---------- */
 
 async function loadConnections(target, holder) {
+  if (target !== lastConnTarget) { lastConnTarget = target; pageState.conns = 1; }
   try {
     const url = target.startsWith("rule:")
       ? "/api/rule/connections?key=" + encodeURIComponent(target.slice(5))
@@ -1765,6 +1956,10 @@ try {
 } catch { /* дефолтный порядок */ }
 
 // both filters are off by default: show everything first, the user hides what they want
+// pf state id -> row element, so a refresh moves the existing rows into the new
+// table instead of replacing them, which is what makes them animatable
+let connRows = new Map();
+
 let hideFirewallConns = localStorage.getItem("statedash-hide-fw") === "1";
 let hideLocalConns = localStorage.getItem("statedash-hide-local") === "1";
 
@@ -1841,6 +2036,7 @@ function renderConnections(holder, conns) {
         connSort = { key, dir: ["rx", "tx", "dir"].includes(key) ? "desc" : "asc" };
       }
       localStorage.setItem("statedash-conn-sort", JSON.stringify(connSort));
+      pageState.conns = 1;
       renderConnections(holder, state.connList);
     });
     // dragging a header changes the column order
@@ -1861,6 +2057,7 @@ function renderConnections(holder, conns) {
       connOrder.splice(connOrder.indexOf(from), 1);
       connOrder.splice(connOrder.indexOf(key), 0, from);
       localStorage.setItem("statedash-conn-order", JSON.stringify(connOrder));
+      pageState.conns = 1;
       renderConnections(holder, state.connList);
     });
   }
@@ -1874,26 +2071,46 @@ function renderConnections(holder, conns) {
     storageKey: "statedash-conn-widths",
     onChange: () => applyConnWidths(table),
   });
+  const { start, end } = pageBounds("conns", conns.length, CONN_PAGE_SIZE);
+  const pageConns = conns.slice(start, end);
+
+  // The table itself is rebuilt on every refresh, but the rows are kept and
+  // moved into the new one, keyed by the pf state id. Without that identity a
+  // row has no previous position and there is nothing to animate — every
+  // refresh would simply blink. The cells are still rebuilt, since the columns
+  // shown and their order can have changed since last time.
+  // taken before the loop below moves the rows into the new table, while they
+  // are still on screen and have positions to read
+  const before = flipCapture(connRows.values());
   const tbody = document.createElement("tbody");
-  for (const conn of conns.slice(0, 300)) {
-    const tr = document.createElement("tr");
+  const kept = new Map();
+  for (const conn of pageConns) {
+    let tr = connRows.get(conn.id);
+    const fresh = !tr;
+    if (fresh) tr = document.createElement("tr");
     const outgoing = conn.dir !== "in";
     // colour marks only exchange with the outside world; inside the network stays neutral
     const local = isLocalConn(conn);
-    tr.className = (outgoing ? "conn-out" : "conn-in") + (local ? " conn-local" : "");
+    tr.className = (outgoing ? "conn-out" : "conn-in") + (local ? " conn-local" : "") + " conn-clickable";
+    tr.replaceChildren();
     for (const key of connOrder) {
       if (connHiddenCols.has(key)) continue;
       tr.appendChild(CONN_COLS[key].cell(conn, outgoing));
     }
     tr.appendChild(document.createElement("td")); // filler
-    tr.classList.add("conn-clickable");
     tr.title = t("kill.hint");
-    tr.addEventListener("click", (event) => openConnMenu(event, conn, holder));
-    tr.addEventListener("contextmenu", (event) => openConnMenu(event, conn, holder));
+    // assigned rather than added: a reused row must not collect a second handler
+    // on every refresh
+    tr.onclick = (event) => openConnMenu(event, conn, holder);
+    tr.oncontextmenu = (event) => openConnMenu(event, conn, holder);
     tbody.appendChild(tr);
+    kept.set(conn.id, tr);
+    if (fresh) markEntering(tr);
   }
+  connRows = kept;  // connections that ended drop out with it
   table.appendChild(tbody);
   holder.replaceChildren(table);
+  flipPlay(before);
   if (hiddenCount || hiddenLocal) {
     const note = document.createElement("div");
     note.className = "conn-hidden-note";
@@ -1903,12 +2120,10 @@ function renderConnections(holder, conns) {
     note.textContent = parts.join(" · ");
     holder.appendChild(note);
   }
-  if (conns.length > 300) {
-    const note = document.createElement("div");
-    note.className = "conn-empty";
-    note.textContent = tf("conn.limit", conns.length);
-    holder.appendChild(note);
-  }
+  const pager = document.createElement("div");
+  pager.className = "pager";
+  holder.appendChild(pager);
+  renderPager(pager, "conns", conns.length, CONN_PAGE_SIZE, () => renderConnections(holder, state.connList));
 }
 
 /* ---------- handlers ---------- */
@@ -2551,8 +2766,12 @@ function renderBlocked(groups) {
       .some((v) => String(v || "").toLowerCase().includes(needle));
   });
 
+  const { start, end } = pageBounds("blocked", rows.length, PAGE_SIZE);
+  const pageRows = rows.slice(start, end);
+  renderPager($("#blk-pager"), "blocked", rows.length, PAGE_SIZE, () => renderBlocked(groups));
+
   const body = $("#blk-body");
-  body.replaceChildren(...rows.map((g) => {
+  body.replaceChildren(...pageRows.map((g) => {
     const tr = document.createElement("tr");
     if (g.kind === "broadcast") tr.className = "blk-noise-row";
 
@@ -3060,10 +3279,12 @@ function createIfacePicker(button, { instant = false } = {}) {
 
 $("#blk-fold").addEventListener("change", (e) => {
   blockedFold = e.target.checked;
+  pageState.blocked = 1;
   loadBlocked();
 });
 $("#blk-search").addEventListener("input", (e) => {
   blockedFilter = e.target.value;
+  pageState.blocked = 1;
   loadBlocked();
 });
 
@@ -3308,6 +3529,7 @@ hideFwBox.checked = hideFirewallConns;
 hideFwBox.addEventListener("change", () => {
   hideFirewallConns = hideFwBox.checked;
   localStorage.setItem("statedash-hide-fw", hideFirewallConns ? "1" : "0");
+  pageState.conns = 1;
   if (state.connList) renderConnections($("#conn-holder"), state.connList);
 });
 
@@ -3316,6 +3538,7 @@ hideLocalBox.checked = hideLocalConns;
 hideLocalBox.addEventListener("change", () => {
   hideLocalConns = hideLocalBox.checked;
   localStorage.setItem("statedash-hide-local", hideLocalConns ? "1" : "0");
+  pageState.conns = 1;
   if (state.connList) renderConnections($("#conn-holder"), state.connList);
 });
 
@@ -3380,6 +3603,7 @@ rateUnitSelect.addEventListener("change", () => {
 
 $("#search").addEventListener("input", (event) => {
   state.filter = event.target.value.trim();
+  pageState.hosts = 1;
   renderTable();
 });
 
@@ -3394,6 +3618,7 @@ $("#hosts-table").querySelector("thead").addEventListener("click", (event) => {
     state.sort = { key, dir: ["name", "ip", "mac"].includes(key) ? "asc" : "desc" };
   }
   localStorage.setItem("statedash-sort", JSON.stringify(state.sort));
+  pageState.hosts = 1;
   updateSortIndicators();
   renderTable(true); // an explicit sort change reorders at once, even under the cursor
 });
@@ -3586,7 +3811,13 @@ function headThs() {
 
 function applyColWidths() {
   applyColumnWidths(hostsTable, colWidths, hostHiddenCols);
+  invalidateSparkBox();  // the sparkline column may have just changed width
 }
+
+// Catches what applyColWidths cannot: the window resizing, the browser zooming,
+// a font arriving late. The sparkline column has no fixed width, so it stretches
+// with the table and its measurement goes stale without anything calling in.
+new ResizeObserver(invalidateSparkBox).observe(hostsTable);
 
 function applyOrderToRow(tr) {
   for (const key of colOrder) {
