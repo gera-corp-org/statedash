@@ -681,6 +681,22 @@ td.num .rate-unit { color: var(--text-muted); font-size: 12px; margin-left: 3px;
 .conn-filter input { accent-color: var(--series-down); width: 15px; height: 15px; }
 .conn-hidden-note { color: var(--text-muted); font-size: 12px; padding: 6px 2px 0; }
 
+.pager {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; padding: 10px 4px 2px;
+  font-size: 12.5px; color: var(--text-muted);
+}
+.pager[hidden] { display: none; }
+.pager-btn {
+  background: var(--hover); border: 1px solid var(--border);
+  color: var(--text-primary); border-radius: 6px; cursor: pointer;
+  min-width: 30px; height: 28px; padding: 0 8px; font-size: 13px;
+}
+.pager-btn:hover:not(:disabled) { background: var(--select); }
+.pager-btn:disabled { opacity: 0.4; cursor: default; }
+.pager-range { font-variant-numeric: tabular-nums; }
+.pager-pages { color: var(--text-secondary); }
+
 .conn-holder { flex: 1; min-height: 0; overflow: auto; }
 /* headers stay visible while the list scrolls */
 .conn-table thead th {
@@ -895,3 +911,16 @@ button.legend-item.legend-off { opacity: .38; }
 
 /* the unit in a rate column header: present but recessive, so the name reads first */
 .th-unit { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+
+/* A row that has just appeared fades in where it is; rows that merely changed
+   places are moved by flipRows in app.js, which animates the transform. */
+tr.row-enter { opacity: 0; }
+tbody tr.host-row, .conn-table tbody tr { transition: opacity 220ms ease; }
+
+/* the row is lifted onto its own layer only while it is actually travelling —
+   flipRows stamps data-flip for exactly that long */
+tbody tr[data-flip] { will-change: transform; }
+
+@media (prefers-reduced-motion: reduce) {
+  tbody tr.host-row, .conn-table tbody tr { transition: none; }
+}
