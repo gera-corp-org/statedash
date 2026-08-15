@@ -25,11 +25,21 @@ DIRECTION_SWAP = _bool("DIRECTION_SWAP", "0")
 
 # Demo mode: runs without OPNsense
 MOCK = _bool("MOCK", "0")
+# A public demonstration: everything can be looked at, nothing can be changed.
+# Without it the first visitor to an instance with no password set can give it
+# one and lock everybody else out, which is the ordinary first-run flow on your
+# own network and a hazard on a public one.
+DEMO = _bool("DEMO", "0")
 
 # History points kept for the charts: 450 * 2s = 15 minutes
 HISTORY_POINTS = int(os.environ.get("HISTORY_POINTS", "450"))
 # Sparkline points returned per host
 SPARK_POINTS = int(os.environ.get("SPARK_POINTS", "90"))
+
+# Size of the invented network in mock mode. The default is the small fixed
+# set; a larger one is what a demonstration wants, since paging and the spread
+# on the chart only show up once there is a crowd.
+MOCK_HOSTS = int(os.environ.get("MOCK_HOSTS", "0"))
 
 # Where docker publishes the port (shown in the settings page only)
 LISTEN = os.environ.get("LISTEN", "127.0.0.1:8080")

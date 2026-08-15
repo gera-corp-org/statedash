@@ -850,6 +850,7 @@ class Tracker:
             "poll_seconds": settings.get("poll_seconds"),
             "ifaces": settings.get("ifaces"),
             "mock": config.MOCK,
+            "demo": config.DEMO,
             "version": config.VERSION,
             "error": self.last_error if now - self.last_poll_ok > settings.get("poll_seconds") * 3 else "",
             "firewall_ips": sorted(self.firewall_ips),

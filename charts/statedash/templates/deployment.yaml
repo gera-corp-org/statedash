@@ -55,6 +55,10 @@ spec:
               value: {{ ternary "1" "0" .Values.directionSwap | quote }}
             - name: MOCK
               value: {{ ternary "1" "0" .Values.mock | quote }}
+            - name: MOCK_HOSTS
+              value: {{ .Values.mockHosts | quote }}
+            - name: DEMO
+              value: {{ ternary "1" "0" .Values.demo | quote }}
             - name: OPNSENSE_KEY
               valueFrom:
                 secretKeyRef:

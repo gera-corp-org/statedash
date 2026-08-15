@@ -4,6 +4,36 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.6.0 — 2026-08-15
+
+### Added
+
+- **A demonstration mode**, `DEMO=1` (`demo: true` in the chart). Everything is
+  visible and nothing on the server can be changed. It exists because an
+  instance with no password set accepts one from anybody — that is how an owner
+  sets the first one, and on a public instance it means the first visitor can
+  lock out everyone else. Settings kept in the browser — theme, language, units,
+  column layout — stay usable, since trying them is half the point.
+- **`MOCK_HOSTS`** sizes the invented network in mock mode. The fixed set of a
+  dozen devices stays the default; a demonstration wants a crowd, because paging
+  and the spread on the chart only show up once there is one.
+- **The mock serves a firewall log**, so the Blocked section works without a
+  firewall. Attempts arrive from outside as a lone SYN, late packets carry other
+  flags, and the rest is broadcast chatter — the same fields the classifier
+  reads, rather than a label saying which is which.
+
+### Fixed
+
+- **The mock's traffic no longer climbs to the ceiling.** The random walk was
+  multiplicative with occasional bursts and nothing to bring it back, so after a
+  few minutes every host sat pinned at the maximum and the totals read in
+  gigabits. Rates are now pulled towards each host's own base.
+
+### Documentation
+
+- Screenshots reshot for hosts and connections, and added for Blocked, which had
+  been described since 1.3.0 without a picture. Both languages, both themes.
+
 ## 1.5.0 — 2026-08-15
 
 ### Added
