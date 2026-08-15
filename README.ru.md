@@ -7,6 +7,11 @@
 VPN. Ничего не ставится на файрвол — приложение опрашивает REST API OPNsense и
 работает в Docker на любой машине.
 
+**[Посмотреть вживую](https://demo.statedash.geracorp.ru)** — работающий стенд
+на выдуманных данных, без файрвола и без установки. Только для чтения:
+настройки общие для всех, кто сейчас смотрит, поэтому они показаны, но заперты.
+Тема, язык и единицы измерения — твои, они работают.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-hosts-ru-dark.png">
   <img alt="hosts" src="docs/statedash-hosts-ru.png">

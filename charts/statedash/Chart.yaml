@@ -32,6 +32,8 @@ annotations:
   artifacthub.io/category: monitoring-logging
   artifacthub.io/license: AGPL-3.0-or-later
   artifacthub.io/links: |
+    - name: live demonstration
+      url: https://demo.statedash.geracorp.ru
     - name: source
       url: https://github.com/gera-corp-org/statedash
     - name: container image
@@ -40,7 +42,7 @@ annotations:
       url: https://github.com/gera-corp-org/statedash/blob/master/CHANGELOG.md
   artifacthub.io/images: |
     - name: statedash
-      image: ghcr.io/gera-corp-org/statedash:1.2.0
+      image: ghcr.io/gera-corp-org/statedash:1.6.0
   artifacthub.io/maintainers: |
     - name: gera-corp
       email: exandore@gmail.com
@@ -53,6 +55,8 @@ annotations:
       url: https://raw.githubusercontent.com/gera-corp-org/statedash/master/docs/statedash-connections.png
     - title: WireGuard peers
       url: https://raw.githubusercontent.com/gera-corp-org/statedash/master/docs/statedash-wireguard.png
+    - title: Blocked traffic
+      url: https://raw.githubusercontent.com/gera-corp-org/statedash/master/docs/statedash-blocked.png
   artifacthub.io/changes: |
     - kind: added
       description: First release of the chart
