@@ -4,6 +4,38 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.5.0 — 2026-08-15
+
+### Added
+
+- **Long lists are paged.** The hosts, connections and blocked tables keep fifty
+  rows in the page at a time (a hundred for connections) instead of everything
+  at once. Filtering and sorting still run across the whole list, so the pages
+  hold what you asked for and not merely what happened to arrive.
+- **Rows slide to their new places instead of jumping.** A table that resorts
+  itself every couple of seconds used to flicker; now a row that changes
+  position travels there, and one that has just appeared fades in. Honours
+  `prefers-reduced-motion`.
+
+### Changed
+
+- **The sparkline is sent only for the rows on screen.** It is four fifths of
+  what a host weighs, and only a visible row can show one. On a network of five
+  hundred hosts a poll drops from about 1.1 MB to 310 kB, every two seconds.
+  `GET /api/hosts` without the new `spark` parameter still returns every line,
+  so anything reading the API directly is unaffected.
+- **Peak rates are computed by the backend** and sent as two numbers. They used
+  to be derived on the client from the sparkline, which would have limited
+  sorting by them to the hosts whose line had been sent.
+
+### Fixed
+
+- The sparkline column is measured once per table rather than once per row.
+  Measuring forces the browser to recompute layout, and doing it between writes
+  was by a wide margin the most expensive thing on the page: drawing five
+  hundred rows fell from 1.6 s to 0.1 s, and the fifty of a page from 28 ms
+  to 17 ms.
+
 ## 1.4.0 — 2026-08-13
 
 ### Changed
