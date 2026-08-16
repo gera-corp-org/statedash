@@ -4,6 +4,19 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.6.2 — 2026-08-16
+
+### Fixed
+
+- **The marker on a chart sat away from the pointer.** The sample under the
+  cursor was picked by counting along the array, which assumes the samples are
+  evenly spaced in time, while the marker is drawn at the sample's actual
+  timestamp. They are not always evenly spaced: a poll that fails or an
+  interface missing from the API answer leaves a gap, and a host's own history
+  stops while it is idle. Where samples bunch up the two disagreed by a third of
+  the chart's width. The sample is now found on the time axis, the same scale
+  the line is drawn with.
+
 ## 1.6.1 — 2026-08-16
 
 ### Fixed
