@@ -1006,7 +1006,18 @@ function timeChart(canvas, tip) {
     const plotW = rect.width - geom.padL - geom.padR;
     const rel = (event.clientX - rect.left - geom.padL) / plotW;
     if (rel < 0 || rel > 1) { tip.hidden = true; render(); return; }
-    const idx = Math.max(0, Math.min(Math.round(rel * (data.length - 1)), data.length - 1));
+
+    // The sample nearest in time, found with the same scale the line is drawn
+    // with. Picking it by position in the array instead assumes the samples are
+    // evenly spaced, and they are not: a poll that fails or an interface that
+    // drops out of the API answer leaves a gap, and a host's own history stops
+    // while it is idle. Where the samples bunch up, the two disagree by a third
+    // of the chart's width — the marker sat well away from the pointer.
+    const wanted = data[0][0] + rel * Math.max(data[data.length - 1][0] - data[0][0], 1);
+    let idx = 0;
+    for (let i = 1; i < data.length; i++) {
+      if (Math.abs(data[i][0] - wanted) < Math.abs(data[idx][0] - wanted)) idx = i;
+    }
     render(idx);
     const point = data[idx];
     // busiest first, so the order in the tooltip matches how the lines are
