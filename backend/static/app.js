@@ -1380,12 +1380,19 @@ function flipPlay(before) {
   }
 
   for (const [tr, delta] of moves) tr.style.transform = `translateY(${delta}px)`;
-  requestAnimationFrame(() => {
-    for (const [tr] of moves) {
-      tr.style.transition = `transform ${REORDER_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
-      tr.style.transform = "";
-    }
-  });
+
+  // Make the browser commit the rows in their old places before releasing them.
+  // Without this read it recomputes style once, for a frame in which the
+  // transform has already been cleared again: it sees the same value it started
+  // with, has nothing to interpolate between, and starts no transition at all —
+  // the rows simply appear in their new places. One read is enough for every
+  // row, since it flushes the whole document.
+  void moves[0][0].offsetHeight;
+
+  for (const [tr] of moves) {
+    tr.style.transition = `transform ${REORDER_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+    tr.style.transform = "";
+  }
   // Every row touched here is stamped with this pass. Two tables animate on
   // their own schedules and a table can start a second pass before the first
   // has finished — clearing up by row rather than by timer means one pass never

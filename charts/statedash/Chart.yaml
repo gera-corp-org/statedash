@@ -10,8 +10,8 @@ type: application
 #
 # The release workflow overrides both from the tag; the values here are what a
 # local `helm package` produces.
-version: 1.6.0
-appVersion: "1.6.0"
+version: 1.6.1
+appVersion: "1.6.1"
 
 home: https://github.com/gera-corp-org/statedash
 sources:
@@ -42,7 +42,7 @@ annotations:
       url: https://github.com/gera-corp-org/statedash/blob/master/CHANGELOG.md
   artifacthub.io/images: |
     - name: statedash
-      image: ghcr.io/gera-corp-org/statedash:1.6.0
+      image: ghcr.io/gera-corp-org/statedash:1.6.1
   artifacthub.io/maintainers: |
     - name: gera-corp
       email: exandore@gmail.com

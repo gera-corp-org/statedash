@@ -4,6 +4,19 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.6.1 — 2026-08-16
+
+### Fixed
+
+- **Rows jumped to their new places instead of travelling.** The reordering
+  animation added in 1.5.0 set up every step correctly and then never ran: the
+  rows were moved back to where they had been and released within the same
+  frame, so the browser recomputed style once, saw the value it had started
+  with, and had nothing to interpolate. It appeared to work only when unrelated
+  code happened to force a layout in between, which is why it fired every half
+  minute or so rather than on every reorder. The old positions are now committed
+  before being released.
+
 ## 1.6.0 — 2026-08-15
 
 ### Added
