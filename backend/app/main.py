@@ -323,6 +323,22 @@ async def blocked():
             "error": tracker.blocked_error}
 
 
+@app.get("/api/system")
+async def system():
+    """How the firewall itself is doing, as opposed to the network.
+
+    "available" is false when the Lobby: Dashboard privilege is missing, which
+    the interface uses to leave the section out rather than show an error for
+    something the operator deliberately did not grant. Individual readings come
+    back as null where the hardware has nothing to report — no swap configured,
+    no temperature sensors — and those tiles are left out too.
+    """
+    if tracker.system_error == "forbidden":
+        return {"available": False, "metrics": {}}
+    return {"available": bool(tracker.system), "metrics": tracker.system,
+            "error": tracker.system_error}
+
+
 @app.get("/api/rules")
 async def rules():
     """Rule activity plus the configuration itself, when the API exposes it."""

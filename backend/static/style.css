@@ -187,6 +187,27 @@ body.nav-collapsed .side-logo { margin: 0 auto; }
   background: var(--series-up); color: #fff;
 }
 .badge-quiet { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+
+/* "mock data" says something about the whole page, so it should read as a label
+   rather than shout: a tint instead of a solid fill, the flask to be
+   recognisable at a glance, and the same 30px height as the controls beside it,
+   which the old pill did not match.
+   No outline, and the tint is mixed against the page rather than left
+   translucent. A 1px translucent border on a pill this round is covered by a
+   fractional number of device pixels wherever the display scales by 125% or
+   175%, and the coverage varies around the curve — measured as a 43-point
+   brightness swing with nine visible steps, which reads as speckle along the
+   rounded ends. Painting one opaque shape leaves only the silhouette's own
+   antialiasing: the same measurement gives 14 points and no steps at all.
+   Being opaque, it assumes the page colour behind it, which is where it sits. */
+.badge-mock {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 12px 0 10px;
+  background: color-mix(in srgb, var(--series-up) 16%, var(--page));
+  color: var(--series-up);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.2px; white-space: nowrap;
+}
+.badge-icon { width: 14px; height: 14px; flex: none; }
 /* same button as on the settings page, only tighter for the header */
 .iface-topbar { min-width: 0; max-width: 230px; height: 30px; padding: 0 10px; font-size: 12px; }
 
@@ -932,3 +953,47 @@ tbody tr[data-flip] { will-change: transform; }
   border-left: 3px solid var(--accent); font-size: 13px; line-height: 1.5;
 }
 body.demo #view-settings :disabled { opacity: .6; }
+
+/* ---------- the firewall's own health: a row of stat tiles ---------- */
+
+.sys-card .card-head { margin-bottom: 12px; }
+.sys-tiles {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+/* an explicit display beats the one [hidden] gets from the browser, so the Hide
+   button would set the attribute and change nothing */
+.sys-tiles[hidden] { display: none; }
+.sys-tile {
+  padding: 10px 12px; border-radius: 8px;
+  background: var(--hover); border: 1px solid var(--border);
+}
+.sys-label { font-size: 12px; color: var(--text-muted); }
+/* the figure wears text ink, never the status colour — the meter carries that */
+.sys-value {
+  font-size: 22px; font-weight: 600; color: var(--text-primary);
+  line-height: 1.25; margin-top: 2px; font-variant-numeric: tabular-nums;
+}
+.sys-meter {
+  height: 4px; border-radius: 999px; background: var(--grid);
+  margin: 8px 0 6px; overflow: hidden;
+}
+/* a tile without a meter keeps the space, so every sub-line sits on one row */
+.sys-spacer { height: 4px; margin: 8px 0 6px; }
+/* the fill's colour is mixed per reading in app.js — green through yellow to
+   red — so the bar shows how high the figure is, not merely that it crossed a
+   line. The value beside it carries the same reading in words and digits, which
+   is what makes the colour a second opinion rather than the only one. */
+.sys-meter i {
+  display: block; height: 100%; border-radius: 999px;
+  background: var(--series-3);
+  transition: width 300ms ease, background-color 300ms ease;
+}
+.sys-sub { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* the words that say what the colour says, for a screen or a reader that cannot */
+.sys-note { color: var(--text-secondary); font-weight: 600; }
+.sys-tile[data-level="bad"] .sys-note { color: var(--critical); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sys-meter i { transition: none; }
+}
