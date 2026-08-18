@@ -31,6 +31,21 @@ language and units are yours and do work.
 - Overall throughput chart for the last 15 minutes with a crosshair.
 - Refreshes every 2 seconds.
 
+**Firewall tiles**, above the chart: CPU, memory, swap, temperature, network
+buffers, pf states and the fullest filesystem — so a busy firewall can be told
+apart from a busy network without opening a second tab. Each bar walks from green
+to red as its figure rises, and a reading that has left the ordinary range says
+so in words as well, since colour alone is no use to everyone. The row hides
+behind a button, like the chart.
+
+This is the one part that needs the **Lobby: Dashboard** privilege, and without
+it the row is absent rather than empty. Tiles the hardware has nothing to report
+for are left out too: a machine with no swap configured, or none of the
+temperature sensors OPNsense can read, shows neither rather than showing zero.
+The CPU figure is for the whole machine rather than per core — that is all the
+endpoint offers. The readings match what OPNsense shows on its own dashboard;
+network buffers count clusters in use against the maximum, as it does.
+
 ### Host details
 
 Clicking a row opens a bottom panel with three tabs:
@@ -175,8 +190,9 @@ With `MOCK=1` in `.env` the interface runs on generated data — no OPNsense nee
 | Diagnostics: Network Insight | reverse DNS (PTR names) |
 | VPN: WireGuard: Status | the WireGuard section |
 | Diagnostics: Logs: Firewall: Live View | the Blocked section |
+| Lobby: Dashboard | the Firewall tiles (CPU, memory, disk, pf states) |
 
-The last four are optional: without them the corresponding data simply will
+The last five are optional: without them the corresponding data simply will
 not show up.
 
 ### 2. API key
@@ -212,7 +228,7 @@ survive a rebuild of the container.
 |---|---|---|
 | `LISTEN` | 127.0.0.1:8080 | where the web interface listens |
 | `POLL_SECONDS` | 2 | rate polling interval |
-| `STATES_SECONDS` | 10 | polling interval for connections, rules and WireGuard |
+| `STATES_SECONDS` | 10 | polling interval for connections, rules, WireGuard, blocks and the firewall's own metrics |
 | `ENRICH_SECONDS` | 60 | name refresh interval (ARP/DHCP/rDNS) |
 | `DIRECTION_SWAP` | 0 | swap receive and transmit |
 | `HISTORY_POINTS` | 450 | chart history points (450×2s = 15 min) |

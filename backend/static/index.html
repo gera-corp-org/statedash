@@ -64,7 +64,14 @@
       <span class="top-stat"><span data-i18n="top.hosts">Хостов</span> <b id="tile-hosts">—</b></span>
     </div>
     <div class="topbar-right">
-      <span id="mock-badge" class="badge" data-i18n="badge.mock" hidden>тестовые данные</span>
+      <span id="mock-badge" class="badge badge-mock" hidden>
+        <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 3h6"/>
+          <path d="M10 3v5.2L5.6 16.8A2.6 2.6 0 0 0 7.9 21h8.2a2.6 2.6 0 0 0 2.3-4.2L14 8.2V3"/>
+          <path d="M7.4 14.5h9.2"/>
+        </svg>
+        <span data-i18n="badge.mock">тестовые данные</span>
+      </span>
       <button id="iface-badge" class="dropdown-btn iface-topbar" type="button" data-i18n-title="top.ifaces.title"></button>
       <button id="lang-btn" class="lang-btn" type="button" title="Language">
         <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -85,6 +92,19 @@
   <div id="error-banner" class="error-banner" hidden></div>
 
   <div id="view-hosts" class="view">
+  <section class="card sys-card" id="sys-card" hidden>
+    <div class="card-head">
+      <div class="card-head-left">
+        <h2 data-i18n="sys.title">Файрвол</h2>
+        <span class="hint-mark" data-i18n-title="sys.hint" title="" aria-hidden="true">?</span>
+      </div>
+      <div class="card-head-right">
+        <button id="sys-toggle" class="link-btn" type="button">Скрыть</button>
+      </div>
+    </div>
+    <div class="sys-tiles" id="sys-tiles"></div>
+  </section>
+
   <section class="card chart-card">
     <div class="card-head">
       <div class="card-head-left">

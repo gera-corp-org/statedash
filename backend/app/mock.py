@@ -51,6 +51,7 @@ class MockClient:
         self._levels = {ip: list(rates) for ip, rates in self._base.items()}
         self._cum = {ip: [0.0, 0.0] for ip, _, _ in _HOSTS}
         self._last = time.time()
+        self._cpu = random.uniform(6, 18)   # per-cent, wanders in cpu_usage()
 
     async def close(self) -> None:
         pass
@@ -134,6 +135,59 @@ class MockClient:
             row["__digest__"] = f"{random.getrandbits(64):016x}"
             rows.append(row)
         return rows
+
+    # --- system metrics ---------------------------------------------------
+    # Shapes copied from a real OPNsense, including its inconsistencies: memory
+    # in bytes with `total` a string and `used` a number, swap in kilobytes as
+    # strings, pf states as strings. A mock that tidied those up would let a
+    # parsing bug through.
+
+    async def cpu_usage(self) -> dict:
+        # wanders around a modest load and is pulled back, like the traffic above
+        self._cpu = max(1.0, min(self._cpu * random.uniform(0.75, 1.3) * (12 / self._cpu) ** 0.3, 97))
+        total = int(self._cpu)
+        sys_part = max(1, int(total * random.uniform(0.15, 0.35)))
+        intr = max(0, int(total * random.uniform(0, 0.08)))
+        return {"total": total, "user": total - sys_part - intr, "nice": 0,
+                "sys": sys_part, "intr": intr, "idle": 100 - total}
+
+    async def system_resources(self) -> dict:
+        total = 4250365952
+        used = int(total * random.uniform(0.22, 0.34))
+        return {"memory": {"total": str(total), "total_frmt": "4053",
+                           "used": used, "used_frmt": str(used // 1024 // 1024)}}
+
+    async def system_swap(self) -> dict:
+        # kilobytes as strings, one entry per device — swapinfo -k
+        return {"swap": [{"device": "/dev/gpt/swapfs", "total": "2097152",
+                          "used": str(random.randint(0, 60000))}]}
+
+    async def system_temperature(self) -> list[dict]:
+        return [{"device": f"cpu{n}", "device_seq": n,
+                 "temperature": f"{random.uniform(41, 58):.1f}",
+                 "type": "cpu", "type_translated": "CPU"} for n in range(2)]
+
+    async def system_mbuf(self) -> dict:
+        current = random.randint(900, 1400)
+        cache = random.randint(3500, 4600)
+        return {"mbuf-statistics": {
+            "mbuf-current": random.randint(6000, 9000), "mbuf-cache": 5200,
+            "cluster-current": current, "cluster-cache": cache,
+            "cluster-total": current + cache, "cluster-max": 252342,
+            "mbuf-failures": 0, "cluster-failures": 0, "packet-failures": 0,
+        }}
+
+    async def system_disk(self) -> dict:
+        return {"devices": [
+            {"device": "/dev/gpt/rootfs", "type": "ufs", "blocks": "19G", "used": "3.2G",
+             "available": "14G", "used_pct": 18, "mountpoint": "/"},
+            {"device": "/dev/gpt/efifs", "type": "msdosfs", "blocks": "256M", "used": "1.7M",
+             "available": "254M", "used_pct": 1, "mountpoint": "/boot/efi"},
+        ]}
+
+    async def pf_states(self) -> dict:
+        # roughly what the invented network would really hold open
+        return {"current": str(len(_HOSTS) * random.randint(3, 6)), "limit": "405300"}
 
     async def interfaces(self) -> list[dict]:
         return [{"name": "lan", "label": "LAN", "device": "vtnet0"},

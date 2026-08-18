@@ -6,9 +6,19 @@ Endpoints used:
   GET  /api/diagnostics/firewall/log             — the firewall log, for blocks
   POST /api/diagnostics/interface/search_arp      — ARP (ip -> mac, hostname)
   POST /api/dhcpv4/leases/searchLease             — DHCP leases (ip -> hostname)
+
+System metrics, all behind the Lobby: Dashboard privilege:
+  GET  /api/diagnostics/cpu_usage/stream          — CPU load (Server-Sent Events)
+  GET  /api/diagnostics/system/system_resources   — memory
+  GET  /api/diagnostics/system/system_swap        — swap
+  GET  /api/diagnostics/system/system_temperature — temperature sensors
+  GET  /api/diagnostics/system/system_mbuf        — network buffers
+  GET  /api/diagnostics/system/system_disk        — filesystem usage
+  GET  /api/diagnostics/firewall/pf_states        — states against the limit
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import httpx
@@ -90,6 +100,67 @@ class OPNsenseClient:
         data = r.json()
         rows = data if isinstance(data, list) else data.get("rows", [])
         return [row for row in rows if isinstance(row, dict)]
+
+    # --- system metrics -------------------------------------------------
+    # Each of these needs the Lobby: Dashboard privilege, which despite the name
+    # is what OPNsense guards its system readings with. Without it they answer
+    # 403 and the caller hides the section rather than reporting an error for
+    # something the operator chose not to grant.
+
+    async def _system_get(self, path: str) -> Any:
+        r = await self._client.get(path)
+        r.raise_for_status()
+        return r.json()
+
+    async def cpu_usage(self) -> dict:
+        """One CPU sample.
+
+        The endpoint is a Server-Sent Events stream that keeps emitting a
+        reading a second until the client leaves. Statedash wants one figure per
+        poll, so it takes the first event and hangs up — that fits the polling
+        loops it already has, and leaves no connection open for the life of the
+        process.
+        """
+        async with self._client.stream("GET", "/api/diagnostics/cpu_usage/stream") as r:
+            r.raise_for_status()
+            async for line in r.aiter_lines():
+                if line.startswith("data:"):
+                    try:
+                        sample = json.loads(line[5:].strip())
+                    except ValueError:
+                        return {}
+                    return sample if isinstance(sample, dict) else {}
+        return {}
+
+    async def system_resources(self) -> dict:
+        """Memory. `total` arrives as a string and `used` as a number."""
+        data = await self._system_get("/api/diagnostics/system/system_resources")
+        return data if isinstance(data, dict) else {}
+
+    async def system_swap(self) -> dict:
+        """Swap. `{"swap": []}` on a machine configured without any."""
+        data = await self._system_get("/api/diagnostics/system/system_swap")
+        return data if isinstance(data, dict) else {}
+
+    async def system_temperature(self) -> list[dict]:
+        """Sensors, as a bare list. Empty where the hardware exposes none."""
+        data = await self._system_get("/api/diagnostics/system/system_temperature")
+        return [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+
+    async def system_mbuf(self) -> dict:
+        """Network buffers, under a "mbuf-statistics" key."""
+        data = await self._system_get("/api/diagnostics/system/system_mbuf")
+        return data if isinstance(data, dict) else {}
+
+    async def system_disk(self) -> dict:
+        """Filesystems, under a "devices" key."""
+        data = await self._system_get("/api/diagnostics/system/system_disk")
+        return data if isinstance(data, dict) else {}
+
+    async def pf_states(self) -> dict:
+        """States in use against the limit; both arrive as strings."""
+        data = await self._system_get("/api/diagnostics/firewall/pf_states")
+        return data if isinstance(data, dict) else {}
 
     async def filter_rules(self) -> list[dict]:
         """Configured filter rules (needs the Firewall: Rules [new] privilege)."""

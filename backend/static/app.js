@@ -47,6 +47,19 @@ const I18N = {
     "app.title": "Statedash — активные хосты",
     "nav.hosts": "Активные хосты",
     "nav.settings": "Настройки",
+    "sys.title": "Файрвол",
+    "sys.hint": "Как себя чувствует сама машина, а не сеть на ней. Раздел появляется только при выданной привилегии Lobby: Dashboard; плитки, по которым железу нечего сообщить — swap, датчики температуры — не показываются вовсе.",
+    "sys.cpu": "Процессор",
+    "sys.cpu.sub": "польз. {u}% · сист. {s}%",
+    "sys.memory": "Память",
+    "sys.swap": "Подкачка",
+    "sys.temp": "Температура",
+    "sys.mbuf": "Буферы сети",
+    "sys.states": "Состояния pf",
+    "sys.disk": "Диск",
+    "sys.near": "близко к пределу",
+    "sys.over": "предел",
+    "sys.failures": "отказов: {n}",
     "set.access": "Доступ",
     "demo.note": "Витрина: настройки видны, но менять их нельзя — они общие для всех, кто сейчас смотрит. Тема, язык и единицы измерения ваши личные и работают.",
     "err.demo_read_only": "Витрина работает только на чтение",
@@ -371,6 +384,19 @@ const I18N = {
     "app.title": "Statedash — active hosts",
     "nav.hosts": "Active hosts",
     "nav.settings": "Settings",
+    "sys.title": "Firewall",
+    "sys.hint": "How the machine itself is doing, as opposed to the network on it. The section appears only when the Lobby: Dashboard privilege is granted; a tile the hardware has nothing to report for — swap, temperature sensors — is left out rather than shown as zero.",
+    "sys.cpu": "CPU",
+    "sys.cpu.sub": "user {u}% · sys {s}%",
+    "sys.memory": "Memory",
+    "sys.swap": "Swap",
+    "sys.temp": "Temperature",
+    "sys.mbuf": "Network buffers",
+    "sys.states": "pf states",
+    "sys.disk": "Disk",
+    "sys.near": "near the limit",
+    "sys.over": "at the limit",
+    "sys.failures": "failures: {n}",
     "set.access": "Access",
     "demo.note": "A demonstration: the settings are visible but cannot be changed — they are shared by everyone looking. Theme, language and units are yours alone and do work.",
     "err.demo_read_only": "The demonstration is read-only",
@@ -1297,6 +1323,194 @@ function updateSortIndicators() {
     const active = th.dataset.sort === state.sort.key;
     th.classList.toggle("sorted", active);
     if (active) th.dataset.dir = state.sort.dir; else delete th.dataset.dir;
+  }
+}
+
+/* ---------- the firewall's own health ---------- */
+
+let systemTimer = null;
+// kept so the tiles can be repainted when the theme changes: their bar colours
+// are mixed from the theme's own variables, and a stale colour would sit there
+// until the next poll
+let lastSystem = null;
+
+// One decimal below ten, none above: a tile showing "22.1%" spends a character
+// on noise, while "0.2%" of the state table is the whole of what it has to say.
+// Localised, so it does not sit next to a comma-separated temperature with a
+// full stop of its own.
+function fmtPct(value) {
+  const digits = Math.abs(value) < 10 ? 1 : 0;
+  return value.toLocaleString(locale(), { minimumFractionDigits: 0, maximumFractionDigits: digits }) + "%";
+}
+
+// df -h talks in "3.2G" and "256M". Those are the only sizes the disk answer
+// carries — there is no byte count behind them — so they are read back into
+// bytes and printed like every other size on the page.
+const DF_UNITS = { K: 1024, M: 1048576, G: 1073741824, T: 1099511627776, P: 1125899906842624 };
+
+function fmtDf(value) {
+  const match = /^([\d.]+)\s*([KMGTP])?/i.exec(String(value || "").trim());
+  if (!match) return String(value || "");
+  const size = parseFloat(match[1]) * (DF_UNITS[(match[2] || "").toUpperCase()] || 1);
+  return Number.isFinite(size) ? fmtBytes(size) : String(value);
+}
+
+
+// Where a reading stops being unremarkable. Two steps rather than one: a tile
+// that only ever turns red says nothing until it is too late.
+const SYS_LEVELS = {
+  cpu: [80, 95], memory: [85, 95], swap: [25, 60],
+  mbuf: [70, 90], states: [70, 90], disk: [85, 95],
+};
+
+function sysLevel(key, pct) {
+  const [warn, bad] = SYS_LEVELS[key] || [80, 95];
+  if (pct >= bad) return "bad";
+  if (pct >= warn) return "warn";
+  return "ok";
+}
+
+/**
+ * The bar's colour, walked from calm to critical as the figure rises.
+ *
+ * Three anchors rather than a rainbow, and they are the status colours the rest
+ * of the interface already uses: green, then yellow at the metric's warning
+ * mark, then red at its limit. Mixing between them rather than stepping means a
+ * meter at two thirds looks different from one at a third, which is the point —
+ * stepping only at the thresholds leaves everything below the first one looking
+ * identically fine. No new hue is introduced, so nothing here can be mistaken
+ * for the blue and orange the traffic chart above spends on interfaces.
+ */
+function mixHex(from, to, k) {
+  const parse = (hex) => {
+    const n = parseInt(hex.replace("#", ""), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  };
+  const [a, b] = [parse(from), parse(to)];
+  const mixed = a.map((v, i) => Math.round(v + (b[i] - v) * Math.max(0, Math.min(k, 1))));
+  return `rgb(${mixed.join(", ")})`;
+}
+
+function sysColor(key, pct) {
+  const [warn, bad] = SYS_LEVELS[key] || [80, 95];
+  const calm = cssVar("--series-3");     // green
+  const caution = cssVar("--series-4");  // yellow
+  const alarm = cssVar("--critical");    // red
+  if (pct <= 0) return calm;
+  if (pct >= bad) return alarm;
+  return pct < warn
+    ? mixHex(calm, caution, pct / warn)
+    : mixHex(caution, alarm, (pct - warn) / (bad - warn));
+}
+
+async function loadSystem() {
+  try {
+    const res = await fetch("/api/system");
+    if (!res.ok) return;
+    const data = await res.json();
+    const card = $("#sys-card");
+    card.hidden = !data.available;
+    if (data.available) {
+      lastSystem = data.metrics || {};
+      renderSystem(lastSystem);
+    }
+  } catch (err) {
+    // a reading that did not arrive leaves the tiles as they were; the traffic
+    // side of the page is the part worth interrupting for
+  }
+}
+
+function renderSystem(m) {
+  const tiles = [];
+
+  if (m.cpu) {
+    tiles.push({
+      key: "cpu", label: t("sys.cpu"), value: fmtPct(m.cpu.total), pct: m.cpu.total,
+      sub: tp("sys.cpu.sub", { u: m.cpu.user, s: m.cpu.sys }),
+    });
+  }
+  if (m.memory) {
+    tiles.push({
+      key: "memory", label: t("sys.memory"), value: fmtPct(m.memory.pct), pct: m.memory.pct,
+      sub: `${fmtBytes(m.memory.used)} / ${fmtBytes(m.memory.total)}`,
+    });
+  }
+  if (m.swap) {
+    tiles.push({
+      key: "swap", label: t("sys.swap"), value: fmtPct(m.swap.pct), pct: m.swap.pct,
+      sub: `${fmtBytes(m.swap.used)} / ${fmtBytes(m.swap.total)}`,
+    });
+  }
+  if (m.temperature) {
+    // no meter: there is no maximum to measure a temperature against, so the
+    // figure stands on its own and the level comes from absolute degrees
+    const deg = m.temperature.value;
+    tiles.push({
+      key: "temp", label: t("sys.temp"),
+      value: deg.toLocaleString(locale(), { maximumFractionDigits: 1 }) + "\u00a0°C",
+      level: deg >= 90 ? "bad" : deg >= 75 ? "warn" : "ok",
+      sub: m.temperature.device,
+    });
+  }
+  if (m.mbuf) {
+    tiles.push({
+      key: "mbuf", label: t("sys.mbuf"), value: fmtPct(m.mbuf.pct), pct: m.mbuf.pct,
+      sub: `${fmtCount(m.mbuf.used)} / ${fmtCount(m.mbuf.max)}`,
+      // Failures are the reading that matters here: anything but zero means a
+      // packet was dropped for want of a buffer, however low the percentage.
+      level: m.mbuf.failures ? "bad" : undefined,
+      note: m.mbuf.failures ? tf("sys.failures", fmtCount(m.mbuf.failures)) : "",
+    });
+  }
+  if (m.states) {
+    tiles.push({
+      key: "states", label: t("sys.states"), value: fmtPct(m.states.pct), pct: m.states.pct,
+      sub: `${fmtCount(m.states.current)} / ${fmtCount(m.states.limit)}`,
+    });
+  }
+  if (m.disk) {
+    tiles.push({
+      key: "disk", label: t("sys.disk"), value: fmtPct(m.disk.pct), pct: m.disk.pct,
+      sub: `${fmtDf(m.disk.used)} / ${fmtDf(m.disk.total)} · ${m.disk.mountpoint}`,
+    });
+  }
+
+  const holder = $("#sys-tiles");
+  holder.replaceChildren();
+  for (const tile of tiles) {
+    const level = tile.level || sysLevel(tile.key, tile.pct || 0);
+    // The colour never carries the state on its own: a tile that is not
+    // ordinary says so in words underneath, which survives a monochrome screen
+    // and a reader who cannot tell the two hues apart.
+    const note = tile.note || (level === "bad" ? t("sys.over") : level === "warn" ? t("sys.near") : "");
+    const el = document.createElement("div");
+    el.className = "sys-tile";
+    el.dataset.level = level;
+    el.innerHTML = `
+      <div class="sys-label"></div>
+      <div class="sys-value"></div>
+      ${tile.pct === undefined
+        ? '<div class="sys-spacer"></div>'   // no scale to measure a temperature against
+        : '<div class="sys-meter"><i></i></div>'}
+      <div class="sys-sub"></div>`;
+    el.querySelector(".sys-label").textContent = tile.label;
+    el.querySelector(".sys-value").textContent = tile.value;
+    const meter = el.querySelector(".sys-meter i");
+    if (meter) {
+      meter.style.width = Math.max(0, Math.min(tile.pct, 100)) + "%";
+      // failures put the tile at the limit whatever its percentage says, so the
+      // bar takes the level's colour rather than the figure's
+      meter.style.background = level === "bad" ? cssVar("--critical") : sysColor(tile.key, tile.pct);
+    }
+    const sub = el.querySelector(".sys-sub");
+    sub.textContent = tile.sub || "";
+    if (note) {
+      const mark = Object.assign(document.createElement("span"), {
+        className: "sys-note", textContent: note,
+      });
+      sub.append(document.createTextNode(sub.textContent ? " · " : ""), mark);
+    }
+    holder.appendChild(el);
   }
 }
 
@@ -3955,6 +4169,19 @@ function applyChartHidden(hidden) {
 chartToggle.addEventListener("click", () => applyChartHidden(!chartWrap.hidden));
 if (localStorage.getItem("statedash-chart-hidden") === "1") applyChartHidden(true);
 
+// The same control as the chart above, sharing its wording. On a firewall nobody
+// is worried about, the tiles are a row of figures that never moves, and the
+// traffic below is what the page is for.
+const sysToggle = $("#sys-toggle");
+const sysTiles = $("#sys-tiles");
+function applySysHidden(hidden) {
+  sysTiles.hidden = hidden;
+  sysToggle.textContent = t(hidden ? "chart.show" : "chart.hide");
+  localStorage.setItem("statedash-sys-hidden", hidden ? "1" : "0");
+}
+sysToggle.addEventListener("click", () => applySysHidden(!sysTiles.hidden));
+if (localStorage.getItem("statedash-sys-hidden") === "1") applySysHidden(true);
+
 function applyLang(next) {
   lang = next === "en" ? "en" : "ru";
   localStorage.setItem("statedash-lang", lang);
@@ -3973,8 +4200,13 @@ function applyLang(next) {
   if (state.connList && state.tab === "conns") renderConnections($("#conn-holder"), state.connList);
   if (state.wgList) renderWg(state.wgList);
   if (state.rulesList) renderRules();
+  // The tile labels are built here rather than marked up with data-i18n, so
+  // without this they keep the old language until the next poll — ten seconds of
+  // a page that has half changed.
+  if (lastSystem) renderSystem(lastSystem);
   if (!$("#view-settings").hidden) loadSettings();
   applyChartHidden(chartWrap.hidden);
+  applySysHidden(sysTiles.hidden);
   applyNavCollapsed(document.body.classList.contains("nav-collapsed"));
   mainChart.redraw();
   histoChart.redraw();
@@ -4046,6 +4278,7 @@ $("#theme-btn").addEventListener("click", () => {
   mainChart.redraw();
   histoChart.redraw();
   render();
+  if (lastSystem) renderSystem(lastSystem);  // bar colours come from the theme
 });
 
 let fmapResizeTimer = null;
@@ -4062,9 +4295,16 @@ systemDark.addEventListener("change", () => {
   mainChart.redraw();
   histoChart.redraw();
   render();
+  if (lastSystem) renderSystem(lastSystem);  // bar colours come from the theme
 });
 
 applyStaticLang();
 applyRateUnitLabels();
 applyChartHidden(chartWrap.hidden);
+applySysHidden(sysTiles.hidden);
 poll();
+// Polled from the start rather than when a view is opened: the card sits on
+// the page that loads first, and it stays hidden until the answer says the
+// privilege is there.
+loadSystem();
+systemTimer = setInterval(loadSystem, 10000);

@@ -4,6 +4,34 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.7.0 — 2026-08-18
+
+### Added
+
+- **How the firewall itself is doing**, as a row of tiles above the traffic
+  chart: CPU, memory, swap, temperature, network buffers, pf states and the
+  fullest filesystem — so a busy firewall can be told apart from a busy network
+  without opening a second tab. Each bar's colour walks from green to red as its
+  figure rises, and a reading outside the ordinary range says so in words too,
+  since colour alone is no use to every reader. The row hides behind a button,
+  like the chart.
+
+  It needs the **Lobby: Dashboard** privilege, the one endpoint group Statedash
+  had not asked for; without it the row is absent rather than empty. Tiles the
+  hardware cannot report are left out as well — a machine with no swap
+  configured, or without temperature sensors, shows neither instead of showing
+  zero. The CPU figure covers the whole machine rather than each core: that is
+  all the endpoint offers. Readings match what OPNsense shows on its own
+  dashboard, network buffers included.
+
+### Changed
+
+- **The "mock data" badge** is a tinted chip with a flask rather than a solid
+  orange pill, and it lines up with the controls beside it instead of sitting a
+  few pixels short.
+- Screenshots reshot for hosts and connections, both languages and themes, since
+  the tiles changed what that page looks like.
+
 ## 1.6.2 — 2026-08-16
 
 ### Fixed

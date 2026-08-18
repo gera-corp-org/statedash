@@ -172,6 +172,100 @@ def _block_key(row: dict) -> tuple:
             str(row.get("label") or ""))
 
 
+def _to_int(value) -> int | None:
+    """These answers mix strings and numbers for the same kind of field."""
+    try:
+        return int(float(str(value).strip()))
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_float(value) -> float | None:
+    try:
+        return float(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _pct(used, total) -> float | None:
+    if used is None or not total:
+        return None
+    return round(used / total * 100, 1)
+
+
+def _system_reading(cpu, memory, swap, temps, mbuf, disk, states) -> dict:
+    """The seven system readings, reduced to what a row of tiles can show.
+
+    Hardware that is not there comes back as None rather than zero. A machine
+    with no swap configured and one whose swap is untouched are different
+    things, and a tile reading 0% claims to know the second.
+    """
+    out: dict = {}
+
+    cpu_total = _to_int(cpu.get("total")) if isinstance(cpu, dict) else None
+    out["cpu"] = None if cpu_total is None else {
+        "total": cpu_total,
+        "user": _to_int(cpu.get("user")) or 0,
+        "sys": _to_int(cpu.get("sys")) or 0,
+        "intr": _to_int(cpu.get("intr")) or 0,
+    }
+
+    mem = (memory or {}).get("memory") or {}
+    mem_total, mem_used = _to_int(mem.get("total")), _to_int(mem.get("used"))
+    out["memory"] = None if not mem_total or mem_used is None else {
+        "used": mem_used, "total": mem_total, "pct": _pct(mem_used, mem_total),
+    }
+
+    # swapinfo -k: kilobytes, as strings, one entry per device. Memory above is
+    # in bytes, so this is brought to the same unit rather than left to the
+    # interface to remember which is which.
+    swap_devices = (swap or {}).get("swap") or []
+    sw_total = sum(_to_int(d.get("total")) or 0 for d in swap_devices)
+    sw_used = sum(_to_int(d.get("used")) or 0 for d in swap_devices)
+    out["swap"] = None if not sw_total else {
+        "used": sw_used * 1024, "total": sw_total * 1024, "pct": _pct(sw_used, sw_total),
+    }
+
+    # the hottest sensor: a tile holds one number, and the hottest is the one
+    # worth knowing
+    hottest = None
+    for row in temps or []:
+        value = _to_float(row.get("temperature"))
+        if value is None:
+            continue
+        if hottest is None or value > hottest["value"]:
+            hottest = {"value": value, "device": str(row.get("device") or "")}
+    out["temperature"] = hottest
+
+    # cluster-total against cluster-max, the same pair OPNsense shows on its own
+    # dashboard, so the two do not disagree. Failures are the part that matters:
+    # anything but zero means packets were dropped for want of a buffer.
+    stats = (mbuf or {}).get("mbuf-statistics") or {}
+    buf_used, buf_max = _to_int(stats.get("cluster-total")), _to_int(stats.get("cluster-max"))
+    out["mbuf"] = None if not buf_max or buf_used is None else {
+        "used": buf_used, "max": buf_max, "pct": _pct(buf_used, buf_max),
+        "failures": sum(_to_int(stats.get(k)) or 0
+                        for k in ("mbuf-failures", "cluster-failures", "packet-failures")),
+    }
+
+    # the fullest filesystem, since that is the one that will fill up first
+    fullest = None
+    for row in (disk or {}).get("devices") or []:
+        pct = _to_int(row.get("used_pct"))
+        if pct is None:
+            continue
+        if fullest is None or pct > fullest["pct"]:
+            fullest = {"pct": pct, "mountpoint": str(row.get("mountpoint") or ""),
+                       "used": str(row.get("used") or ""), "total": str(row.get("blocks") or "")}
+    out["disk"] = fullest
+
+    cur, limit = _to_int((states or {}).get("current")), _to_int((states or {}).get("limit"))
+    out["states"] = None if cur is None else {
+        "current": cur, "limit": limit or 0, "pct": _pct(cur, limit),
+    }
+    return out
+
+
 def _flow_key(row: dict) -> tuple:
     """Connection tuple — the two states of one NAT flow meet on it."""
     return (str(row.get("src_addr") or ""), str(row.get("src_port") or ""),
@@ -423,6 +517,8 @@ class Tracker:
         self.blocked_seen: deque = deque(maxlen=20000)  # digests already counted
         self.blocked_seen_set: set[str] = set()
         self.blocked_error: str = ""   # 403 when the log privilege is missing
+        self.system: dict = {}         # last system reading, empty until the first poll
+        self.system_error: str = ""    # 403 when the Lobby: Dashboard privilege is missing
         self.wg_ts: float = 0.0
         self.wg_history: dict[str, deque] = {}  # public_key -> (ts, rx_bps, tx_bps)
         self.rdns: dict[str, tuple[str, float]] = {}  # ip -> (name, when it was resolved)
@@ -477,6 +573,7 @@ class Tracker:
         self._states_task = asyncio.create_task(self._states_loop())
         self._wg_task = asyncio.create_task(self._wg_loop())
         self._blocked_task = asyncio.create_task(self._blocked_loop())
+        self._system_task = asyncio.create_task(self._system_loop())
 
     async def replace_client(self, client) -> None:
         """Swaps the API client (after the keys change, say) on the fly."""
@@ -688,6 +785,43 @@ class Tracker:
                 else:
                     self.blocked_error = str(exc)
                     log.warning("firewall log poll failed: %s", exc)
+            await asyncio.sleep(settings.get("states_seconds"))
+
+    async def _system_loop(self) -> None:
+        """How the firewall itself is doing, as opposed to the network.
+
+        Seven readings behind one privilege, gathered together so a single 403
+        hides the whole section. They are fetched concurrently: six are cheap,
+        and the seventh waits for the next event on a stream, which there is no
+        reason to make the others queue behind.
+
+        Absent hardware is not an error. A machine with no swap configured
+        answers with an empty list, and one without temperature sensors the
+        same — those come back as None here and the interface leaves the tile
+        out rather than printing a zero that looks like a reading.
+        """
+        await asyncio.sleep(2)
+        while True:
+            try:
+                cpu, memory, swap, temps, mbuf, disk, states = await asyncio.gather(
+                    self.client.cpu_usage(),
+                    self.client.system_resources(),
+                    self.client.system_swap(),
+                    self.client.system_temperature(),
+                    self.client.system_mbuf(),
+                    self.client.system_disk(),
+                    self.client.pf_states(),
+                )
+                self.system = _system_reading(cpu, memory, swap, temps, mbuf, disk, states)
+                self.system_error = ""
+            except Exception as exc:
+                status = getattr(getattr(exc, "response", None), "status_code", None)
+                if status == 403:
+                    # no privilege: stay quiet and let the interface hide the section
+                    self.system_error = "forbidden"
+                else:
+                    self.system_error = str(exc)
+                    log.warning("system metrics poll failed: %s", exc)
             await asyncio.sleep(settings.get("states_seconds"))
 
     async def _states_loop(self) -> None:

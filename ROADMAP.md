@@ -8,43 +8,6 @@ The known gaps of the current version are listed under *Limitations* in the
 [README](README.md); this file is about what might be built, not what is
 missing.
 
-## System metrics from OPNsense
-
-CPU load, memory, swap, temperature, mbuf usage and the pf state counter,
-alongside the traffic chart — so a busy firewall can be told apart from a busy
-network without opening a second tab.
-
-All of it hangs off one privilege, **Lobby: Dashboard**
-(`page-system-login-logout`), which despite the name is what grants:
-
-| Endpoint | Data |
-|---|---|
-| `diagnostics/cpu_usage/stream` | CPU load, per core |
-| `diagnostics/system/system_resources` | memory in use, free, cached |
-| `diagnostics/system/system_swap` | swap |
-| `diagnostics/system/system_temperature` | CPU temperature |
-| `diagnostics/system/system_mbuf` | network buffers |
-| `diagnostics/system/system_disk` | filesystem usage |
-| `diagnostics/firewall/pf_states` | states in use against the limit |
-
-The last two earn their place: running out of mbufs or pf states takes the
-network down, and neither is visible on an ordinary traffic dashboard.
-
-Notes for whoever builds it:
-
-- **Make the whole section optional.** Without the privilege the endpoints
-  answer 403; that must leave the rest of the interface untouched rather than
-  raising errors. Statedash asks for a deliberately small set of privileges and
-  this one should stay opt-in.
-- `cpu_usage/stream` is Server-Sent Events, not plain JSON. Polling it on a
-  timer and keeping the last sample fits the existing `Tracker` loops better
-  than holding a stream open.
-- Endpoint names are snake_case (`system_resources`); the camelCase spellings
-  answer 403 whatever the privileges.
-- OPNsense shows the same numbers on its own dashboard, so this is a
-  convenience, not a missing capability. Worth doing only if reading both in
-  one place genuinely helps.
-
 ## Getting a fresh geo database to a pinned installation
 
 The IPv4-to-country database is baked into the image at build time. A scheduled
