@@ -269,12 +269,12 @@ different about running under Kubernetes.
 - **History lives in memory** (≈15 minutes for hosts, ≈75 minutes for
   WireGuard) and is lost when the container restarts — there is no long-term
   storage yet.
-- **No blocks are shown**: only permitted traffic from the state table is
-  visible; the firewall log is closed off by API privileges.
 - **Dropping a connection** interrupts the flow right now but does not forbid
   it — the client usually reconnects.
-- Plain HTTP without encryption: do not expose it to the Internet; for remote
-  access a VPN is safer.
+- **Serves plain HTTP.** Encryption is somebody else's job — an ingress or a
+  reverse proxy in front, as the [demonstration](https://demo.statedash.geracorp.ru)
+  is served. Exposed directly, it is unencrypted; for reaching it from away a
+  VPN is safer than opening a port.
 
 ## Running as a non-root user
 
