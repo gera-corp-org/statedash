@@ -45,15 +45,34 @@ Notes for whoever builds it:
   convenience, not a missing capability. Worth doing only if reading both in
   one place genuinely helps.
 
-## Updating the geo database without rebuilding
+## Getting a fresh geo database to a pinned installation
 
-The IPv4-to-country database is baked into the image at build time. Refreshing
-it currently means pulling a new image.
+The IPv4-to-country database is baked into the image at build time. A scheduled
+rebuild keeps it fresh, and that part is built: `image.yml` runs on the first of
+each month. That was the deliberate answer over a download button, and it stays
+the answer — the data changes slowly, the cost of being a few weeks stale is a
+slightly wrong flag, and a firewall tool that reaches out to a CDN on its own is
+a thing auditors ask about.
 
-The intended answer is a **scheduled rebuild in CI** rather than a download
-button: the data changes slowly, the cost of being a few weeks stale is a
-slightly wrong flag, and a firewall tool that reaches out to a CDN on its own
-is a thing auditors ask about.
+What the monthly rebuild does *not* do is reach anybody who pinned a version.
+It runs on the default branch, and the tag rules give a branch build only
+`latest` and a short sha; `1.6` and `1.6.2` are cut from release tags alone. So
+an installation pinned to a release — which is what the chart does through
+`appVersion`, and what `docker-compose.override.yml` recommends — keeps whatever
+database its release was built with until the next release comes out. Pinning is
+right, and this is its price.
+
+Three ways out, none obviously best:
+
+- **Release more often.** Simplest, and dishonest: a version number that changes
+  because a data file did says nothing about the software.
+- **Re-tag the patch line on a rebuild.** The monthly build could move `1.6` to
+  the freshly built image while `1.6.2` stays immutable. Anyone tracking `1.6`
+  then gets the database without a new version number — but a floating tag
+  brings back the surprise-swap the pin exists to prevent, only narrower.
+- **Fetch at runtime after all**, keeping the baked-in copy as the floor. That is
+  the option the notes below are about, and the one that adds an outbound
+  connection nobody asked for.
 
 If a runtime update is built anyway, keep the baked-in copy: the image must
 work standalone, and the volume may only improve it. That way a wiped volume
