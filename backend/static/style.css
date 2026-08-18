@@ -78,6 +78,14 @@
   --select: rgba(57, 135, 229, 0.16);
 }
 
+/* The browser gives [hidden] a display of none, and any rule of ours that sets a
+   display beats it — a class with `display: flex` silently turns the attribute
+   into a no-op. That caught the mock-data badge, the Blocked menu entry and
+   three rows on the settings page, each of which stayed on screen while the code
+   believed it had hidden them. This is the one place !important earns its keep:
+   the attribute means hidden, and nothing here should be able to argue. */
+[hidden] { display: none !important; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 body {
@@ -961,9 +969,6 @@ body.demo #view-settings :disabled { opacity: .6; }
   display: grid; gap: 10px;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
-/* an explicit display beats the one [hidden] gets from the browser, so the Hide
-   button would set the attribute and change nothing */
-.sys-tiles[hidden] { display: none; }
 .sys-tile {
   padding: 10px 12px; border-radius: 8px;
   background: var(--hover); border: 1px solid var(--border);

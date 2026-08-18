@@ -4,6 +4,19 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.7.1 — 2026-08-19
+
+### Fixed
+
+- **Things the code had hidden stayed on screen.** The browser gives the `hidden`
+  attribute a display of `none`, and any rule setting a display of its own beats
+  it, so a class with `display: flex` turned the attribute into a no-op. The
+  "mock data" badge showed against a real firewall, the Blocked entry stayed in
+  the menu without the privilege that section needs, and three rows on the
+  settings page appeared regardless of whether they applied. One rule now makes
+  the attribute win wherever it is used, rather than a patch per element — this
+  was the third instance found.
+
 ## 1.7.0 — 2026-08-18
 
 ### Added
