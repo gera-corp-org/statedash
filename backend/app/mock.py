@@ -45,12 +45,17 @@ _REMOTES = [
 
 
 class MockClient:
+    # the sampling window OPNsense reports its byte counts over
+    _WINDOW = 2.0
+
     def __init__(self) -> None:
         # random walk around a base rate that is each host's own
         self._base = {ip: [random.uniform(1e4, 5e6), random.uniform(1e4, 8e5)] for ip, _, _ in _HOSTS}
         self._levels = {ip: list(rates) for ip, rates in self._base.items()}
-        self._cum = {ip: [0.0, 0.0] for ip, _, _ in _HOSTS}
         self._last = time.time()
+        # WireGuard's own counters are genuine lifetime totals, unlike the
+        # traffic ones above, so those do accumulate
+        self._cum: dict[str, list[float]] = {}
         self._cpu = random.uniform(6, 18)   # per-cent, wanders in cpu_usage()
 
     async def close(self) -> None:
@@ -221,14 +226,19 @@ class MockClient:
                 level[i] = max(1e3, min(level[i] * random.uniform(0.7, 1.35) * pull, 9e7))
             if random.random() < 0.05:  # occasional "download" bursts
                 level[0] *= 10
-            self._cum[ip][0] += level[0] / 8 * dt
-            self._cum[ip][1] += level[1] / 8 * dt
             result[iface].append({
                 "address": ip,
                 "rate_bits_in": level[0],
                 "rate_bits_out": level[1],
-                "cumulative_bytes_in": self._cum[ip][0],
-                "cumulative_bytes_out": self._cum[ip][1],
+                # Not a running total, despite the name. A real firewall reports
+                # the bytes of its own sampling window, which is the rate over
+                # _WINDOW seconds and nothing more — checked against one: the
+                # ratio to rate_bits_in was exactly 2.0 for every host in every
+                # sample, and the figure falls when traffic does. The mock used
+                # to accumulate here, which is friendlier and wrong, and it hid
+                # a bug where these were taken for lifetime counters.
+                "cumulative_bytes_in": level[0] / 8 * self._WINDOW,
+                "cumulative_bytes_out": level[1] / 8 * self._WINDOW,
                 "tags": ["local"],
             })
         # each host belongs to exactly one interface, so unticking one in the
