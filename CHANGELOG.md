@@ -4,6 +4,31 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.7.2 — 2026-08-19
+
+### Fixed
+
+- **Total Rx and Total Tx were the current rate, not a total.** OPNsense reports
+  `cumulative_bytes_in`/`_out` per host, and the name promises a lifetime
+  counter; the value is the bytes of its own two-second sampling window. Checked
+  against a real firewall, the ratio to `rate_bits_in` was exactly 2.0 for every
+  host in every sample, and the figure fell whenever traffic did — one host read
+  0.50 MB, then 0.38 MB a few seconds later. Statedash took it for a running
+  total and overwrote its own figure with it on every poll, so the columns rose
+  and fell with the rate.
+
+  The totals are now accumulated here, by integrating each host's rate over the
+  time that actually passed between polls, which does not depend on our interval
+  matching the firewall's window. They count from when this process first saw
+  the host, which is what the column can honestly claim, and a gap longer than
+  three poll intervals is skipped rather than filled with the last known rate.
+  WireGuard peers are unaffected: their totals come from WireGuard's own
+  counters, which are genuine.
+
+- **The mock reported an accumulating counter**, which is friendlier than the
+  real API and wrong. It now returns the rate over a two-second window, as a
+  firewall does — which is what made this reproducible locally at all.
+
 ## 1.7.1 — 2026-08-19
 
 ### Fixed

@@ -24,7 +24,8 @@ language and units are yours and do work.
 - Device table: name (ARP → DHCP → reverse DNS → traffic top), current receive
   and transmit rates, number of connections, IP, MAC, address type
   (DHCP/static), first seen, uptime and inactivity, activity sparkline, total
-  traffic.
+  traffic — counted from when Statedash first saw the host, since the firewall
+  reports no lifetime figure of its own.
 - Columns hidden by default (enable them with the “Columns” button): interface,
   MAC vendor, top peer, number of unique destinations, peak rates over the
   history window.

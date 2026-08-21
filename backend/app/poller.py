@@ -489,7 +489,7 @@ class HostState:
     top_peer_bps: float = 0.0
     bps_down: float = 0.0
     bps_up: float = 0.0
-    total_down: float = 0.0  # bytes for the session (cumulative, from OPNsense)
+    total_down: float = 0.0  # bytes since this process first saw the host
     total_up: float = 0.0
     first_seen: float = 0.0
     last_seen: float = 0.0
@@ -527,6 +527,9 @@ class Tracker:
         # totals, because a host reachable on two of them is counted in each
         self.iface_totals: dict[str, deque] = {}
         self.last_poll_ok: float = 0.0
+        # when the traffic records were last read, so the totals can be
+        # integrated over the interval that actually passed
+        self.last_traffic_poll: float = 0.0
         self.last_error: str = ""
         self._task: asyncio.Task | None = None
         self._enrich_task: asyncio.Task | None = None
@@ -614,12 +617,15 @@ class Tracker:
                 ip = rec["address"]
                 rate_in = float(rec.get("rate_bits_in") or 0)
                 rate_out = float(rec.get("rate_bits_out") or 0)
-                cum_in = float(rec.get("cumulative_bytes_in") or 0)
-                cum_out = float(rec.get("cumulative_bytes_out") or 0)
+                # cumulative_bytes_in/out are deliberately not read. The name
+                # promises a lifetime counter and the value is the rate over the
+                # firewall's own two second window — measured against a real one,
+                # the ratio to rate_bits_in was exactly 2.0 for every host in
+                # every sample, and the figure drops when traffic does. Totals
+                # are accumulated below instead.
                 # in = towards the host (download) unless DIRECTION_SWAP is set
                 swap = settings.get("direction_swap")
                 down, up = (rate_out, rate_in) if swap else (rate_in, rate_out)
-                cdown, cup = (cum_out, cum_in) if swap else (cum_in, cum_out)
 
                 iface_sums[iface][0] += down
                 iface_sums[iface][1] += up
@@ -631,10 +637,6 @@ class Tracker:
                 else:
                     host.bps_down = down
                     host.bps_up = up
-                    host.total_down = 0.0
-                    host.total_up = 0.0
-                host.total_down += cdown
-                host.total_up += cup
                 if rec.get("rname"):
                     host.rname = str(rec["rname"]).strip().rstrip(".")
                 details = rec.get("details")
@@ -645,6 +647,21 @@ class Tracker:
                 host.last_seen = now
                 host.ifaces.add(iface)
                 seen[ip] = host
+
+        # The totals are ours to keep, since the firewall reports no usable one.
+        # Integrating each host's rate over the time actually elapsed gives a
+        # figure that only grows and does not depend on our interval matching
+        # the firewall's window. It counts from when this process first saw the
+        # host, which is what the column can honestly claim.
+        elapsed = now - self.last_traffic_poll if self.last_traffic_poll else 0.0
+        self.last_traffic_poll = now
+        # A long gap means a poll failed or the process was stopped. Carrying the
+        # last known rate across it would invent traffic nobody sent, so the gap
+        # is skipped rather than guessed at.
+        if 0 < elapsed <= settings.get("poll_seconds") * 3:
+            for host in seen.values():
+                host.total_down += host.bps_down / 8 * elapsed
+                host.total_up += host.bps_up / 8 * elapsed
 
         watched = _iface_set(settings.get("ifaces"))
 
