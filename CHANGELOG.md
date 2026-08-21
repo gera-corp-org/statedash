@@ -4,6 +4,24 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.7.3 — 2026-08-19
+
+### Fixed
+
+- **The CPU tile showed the same figure every time.** The reading comes from a
+  Server-Sent Events stream, and Statedash took its first event. That event is
+  not a reading of now: it came back identical on every connection — 9, across
+  five connections spanning a minute — because it is the average since boot. The
+  first event is now discarded and the three that follow are averaged. Those are
+  one-second samples and jump about, 0 to 43 on an otherwise idle firewall, so
+  averaging three halves the scatter; a fourth barely improves on it.
+
+  The other six readings were checked against the raw API at the same time and
+  agree with it: memory against `used`/`total`, network buffers against
+  `cluster-total`/`cluster-max`, pf states against `current`/`limit`, and disk
+  picks the fullest filesystem. Swap and temperature are absent on that machine
+  and correctly show nothing rather than zero.
+
 ## 1.7.2 — 2026-08-19
 
 ### Fixed

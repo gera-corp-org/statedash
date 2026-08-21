@@ -112,25 +112,47 @@ class OPNsenseClient:
         r.raise_for_status()
         return r.json()
 
-    async def cpu_usage(self) -> dict:
-        """One CPU sample.
+    # The stream's first event is not a reading of now. It comes back identical
+    # on every connection — 9 on the firewall this was measured against, over
+    # five connections spanning a minute — because it is the average since boot.
+    # It is discarded. What follows are one-second samples, which jump about (0
+    # to 43 on an otherwise idle machine), so three are averaged: that halves the
+    # scatter, and a fourth barely improves on it.
+    _CPU_SKIP = 1
+    _CPU_SAMPLES = 3
+    _CPU_KEYS = ("total", "user", "nice", "sys", "intr", "idle")
 
-        The endpoint is a Server-Sent Events stream that keeps emitting a
-        reading a second until the client leaves. Statedash wants one figure per
-        poll, so it takes the first event and hangs up — that fits the polling
-        loops it already has, and leaves no connection open for the life of the
-        process.
+    async def cpu_usage(self) -> dict:
+        """A CPU reading, averaged over a few seconds.
+
+        The endpoint is a Server-Sent Events stream emitting a reading a second
+        until the client leaves. Statedash takes what it needs and hangs up,
+        which fits the polling loops it already has and leaves no connection open
+        for the life of the process.
         """
+        samples: list[dict] = []
+        skipped = 0
         async with self._client.stream("GET", "/api/diagnostics/cpu_usage/stream") as r:
             r.raise_for_status()
             async for line in r.aiter_lines():
-                if line.startswith("data:"):
-                    try:
-                        sample = json.loads(line[5:].strip())
-                    except ValueError:
-                        return {}
-                    return sample if isinstance(sample, dict) else {}
-        return {}
+                if not line.startswith("data:"):
+                    continue
+                try:
+                    sample = json.loads(line[5:].strip())
+                except ValueError:
+                    break
+                if not isinstance(sample, dict):
+                    break
+                if skipped < self._CPU_SKIP:
+                    skipped += 1
+                    continue
+                samples.append(sample)
+                if len(samples) >= self._CPU_SAMPLES:
+                    break
+        if not samples:
+            return {}
+        return {key: round(sum(float(s.get(key) or 0) for s in samples) / len(samples))
+                for key in self._CPU_KEYS}
 
     async def system_resources(self) -> dict:
         """Memory. `total` arrives as a string and `used` as a number."""
