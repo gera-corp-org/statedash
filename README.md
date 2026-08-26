@@ -7,7 +7,7 @@ where every device connects to, which firewall rules the traffic flows through
 and who is connected over VPN. Nothing is installed on the firewall — the app
 polls the OPNsense REST API and runs in Docker on any machine.
 
-**[Try it live](https://demo.statedash.geracorp.ru)** — a running instance on
+**[Try it live](https://demo.statedash.geracorp.org)** — a running instance on
 invented data, no firewall and nothing to install. Read-only: the settings are
 shared by everyone looking, so they are on show rather than open. Theme,
 language and units are yours and do work.
@@ -289,7 +289,7 @@ different about running under Kubernetes.
 - **Dropping a connection** interrupts the flow right now but does not forbid
   it — the client usually reconnects.
 - **Serves plain HTTP.** Encryption is somebody else's job — an ingress or a
-  reverse proxy in front, as the [demonstration](https://demo.statedash.geracorp.ru)
+  reverse proxy in front, as the [demonstration](https://demo.statedash.geracorp.org)
   is served. Exposed directly, it is unencrypted; for reaching it from away a
   VPN is safer than opening a port.
 
