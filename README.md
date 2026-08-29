@@ -32,6 +32,19 @@ language and units are yours and do work.
 - Overall throughput chart for the last 15 minutes with a crosshair.
 - Refreshes every 2 seconds.
 
+**Periods.** A picker above the chart, from five minutes to a month. All of them
+are read from a SQLite file beside `settings.json` — one point a minute kept a
+week, one an hour kept five weeks, and per device two days of minutes beside the
+same five weeks of hours. Which shelf answers is decided by what it actually
+holds for the window asked about, so a store that has been running ten minutes
+still draws a month-long view from the only points it has. No answer carries
+more than a thousand points per series: a chart is about that wide in pixels,
+and the rest would cross the network only to be discarded. A month is as far back as it goes; the extra week is so a month-long view
+is full at both ends. Each point carries the average over its bucket and the
+peak within it, because an hour of averages hides the burst that made the hour
+worth looking at: the line draws the average and the tooltip names the peak.
+Under 15 MB on a busy network.
+
 **Firewall tiles**, above the chart: CPU, memory, swap, temperature, network
 buffers, pf states and the fullest filesystem — so a busy firewall can be told
 apart from a busy network without opening a second tab. Each bar walks from green
@@ -234,6 +247,7 @@ survive a rebuild of the container.
 | `DIRECTION_SWAP` | 0 | swap receive and transmit |
 | `HISTORY_POINTS` | 450 | chart history points (450×2s = 15 min) |
 | `SPARK_POINTS` | 90 | sparkline points |
+| `HISTORY_PATH` | beside settings.json | long-term history file; nowhere writable means live view only |
 | `MOCK_HOSTS` | 0 | size of the invented network in mock mode (0 = the fixed set) |
 | `DEMO` | 0 | public demonstration: everything visible, nothing writable |
 
@@ -283,9 +297,10 @@ different about running under Kubernetes.
 
 ## Limitations
 
-- **History lives in memory** (≈15 minutes for hosts, ≈75 minutes for
-  WireGuard) and is lost when the container restarts — there is no long-term
-  storage yet.
+- **The live view lives in memory** (≈15 minutes for hosts, ≈75 minutes for
+  WireGuard) and is lost when the container restarts. Longer periods come from
+  the store described below, which needs somewhere to write: without a volume
+  only the live view remains.
 - **Dropping a connection** interrupts the flow right now but does not forbid
   it — the client usually reconnects.
 - **Serves plain HTTP.** Encryption is somebody else's job — an ingress or a

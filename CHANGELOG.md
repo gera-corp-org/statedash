@@ -4,6 +4,71 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.8.0 — 2026-08-29
+
+### Added
+
+- **History that outlives the container.** Rates used to live in memory and die
+  with the process; a quarter of an hour was as far back as anything looked.
+  They now go to a SQLite file beside `settings.json`, and a new **History**
+  section draws them over any period from five minutes to a month — throughput
+  per interface, the firewall's own readings, the disk, and one device at a
+  time. `HISTORY_PATH` says where the file lives; the Helm chart's volume grew
+  from 64 MB to 128 MB, which a month on a busy network fills to under 15.
+
+  Samples are folded into fixed buckets as they arrive and written when a bucket
+  closes, so nothing is stored at the rate it was polled. Two shelves: one point
+  a minute kept a week, one an hour kept five weeks, and per device two days of
+  minutes beside the same five weeks of hours. Which one answers is decided by
+  what it actually holds for the window asked about, so a store running ten
+  minutes still draws a month-long view from the points it has. Every point
+  carries the average over its bucket and the peak within it — an hour of
+  averages hides the burst that made the hour interesting, so the line draws the
+  average and the tooltip names the peak.
+
+  The store is a convenience and behaves like one. With nowhere writable it
+  switches itself off, the section leaves the menu, and the dashboard goes on:
+  a read-only volume is not an error. A file that cannot be opened is moved
+  aside as `.broken` and a fresh one started. Three failed writes — or three
+  failed reads, counted separately, because a commit every two seconds would
+  otherwise keep clearing the count on a file that had gone bad for reading —
+  retire the store rather than let a database error reach a screen that was
+  asking about a firewall.
+
+- **A searchable device picker.** Five weeks of history on a real firewall is
+  not a list of your devices: one held 466 addresses for 19 live hosts, the rest
+  being the far ends of connections that passed through once. The picker now has
+  a filter that matches names and addresses, and lists peers first, then what is
+  on the network now, then everything else. Bare addresses sort by their octets
+  as numbers, so 10.244.2.221 no longer lands between 1.1.1.1 and 100.4.56.134.
+
+### Changed
+
+- **Every chart in the section shares one axis and one period.** Each used to
+  stretch its own data across the full width, so a device with twenty minutes of
+  history filled the same space as a day of throughput and only the labels said
+  otherwise. The axis is now the period chosen, the line runs edge to edge, and
+  where there is no history there is blank space — which is the honest answer.
+
+- **The disk gets an axis fitted to its own range.** Filling up is measured in
+  per cent a month; on a nought-to-twenty scale a month of it rose three pixels.
+  It now rises fifty.
+
+- **A seven-day view costs 239 KB instead of 1199.** The store folds an answer
+  to at most a thousand points per series — a chart is about that wide in pixels
+  and was discarding nine in ten of them after they crossed the network.
+
+### Fixed
+
+- **Changing the period while the page was loading left two charts on the old
+  one.** The fetches read the period each in turn, and one round could straddle
+  a change; the newer request was then dropped rather than superseding it, so
+  the mix stayed on screen for up to a minute. A round now fixes its period at
+  the start, and a period chosen mid-flight gets a round of its own.
+
+- **The first minute of a new install showed four blank cards.** A line needs
+  two points and the note that says so was hidden as soon as one existed.
+
 ## 1.7.3 — 2026-08-19
 
 ### Fixed

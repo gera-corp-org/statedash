@@ -62,13 +62,3 @@ release and an error page served with 200 cannot become an image whose lookups
 all miss. What remains is that a prolonged CDN outage blocks releasing at all.
 Vendoring the database into the repository would remove the dependency, at the
 cost of a 10 MB file in git history that changes on every refresh.
-
-## Long-term history
-
-Rates live in memory and die with the container. Keeping them would allow
-week-over-week comparison and answering "what happened last night", which is
-what a monitoring tool is usually wanted for.
-
-The obstacle is that it turns a service holding a small, replaceable amount of
-state into one holding data that matters — backups, retention, disk growth and
-migrations all follow. Worth doing deliberately, not by accident.

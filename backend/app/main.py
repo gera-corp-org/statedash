@@ -1,4 +1,5 @@
 import logging
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 import ipaddress
@@ -8,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, config, geo, listen_conf, settings
+from . import auth, config, geo, history as history_store, listen_conf, settings
 from .poller import SERVICES, Tracker, _is_own_zone, _own_networks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -194,6 +195,146 @@ async def hosts(spark: str | None = None):
     """
     wanted = None if spark is None else {ip for ip in spark.split(",") if ip}
     return tracker.snapshot(wanted)
+
+
+# what the range picker may ask for, and how far back each reaches
+# What one answer may carry per series. A chart is at most a couple of thousand
+# pixels wide and folds to that anyway, so anything finer is paid for twice —
+# once on the wire and once in the parser — and then thrown away.
+MAX_POINTS = 1000
+
+
+def _step_of(series: dict) -> int:
+    """Spacing of the points that came back: the smallest gap seen.
+
+    Reported as measured rather than rounded to a shelf, because the answer may
+    have been folded to a coarser grid on the way out and the shelf it came from
+    would no longer describe it."""
+    for points in series.values():
+        if len(points) >= 2:
+            gaps = [points[i][0] - points[i - 1][0] for i in range(1, len(points))]
+            return int(min(gaps))
+    return 3600
+
+
+def _iface_names() -> list[str]:
+    return [name.strip() for name in settings.get("ifaces").split(",") if name.strip()]
+
+
+# What the store is asked for. Every period the interface offers is here and
+# every one of them is answered from the store: the History section has no path
+# to the live quarter of an hour the main chart draws, whatever the two shortest
+# once did. A month is the longest; the store keeps five weeks so the far end of
+# it is never a stub.
+HISTORY_RANGES = {
+    "5m": 300, "15m": 900, "30m": 1800, "1h": 3600, "3h": 3 * 3600,
+    "6h": 6 * 3600, "12h": 12 * 3600, "24h": 86400, "2d": 2 * 86400,
+    "7d": 7 * 86400, "30d": 30 * 86400,
+}
+
+
+@app.get("/api/history")
+async def history(range: str = "24h", kind: str = "throughput", ip: str = "", key: str = ""):
+    """Points from the long-term store, per series.
+
+    The live quarter of an hour is not served from here — it lives in memory and
+    is already on the page. This is what outlasts a restart.
+    """
+    store = tracker.history
+    if not store.available:
+        return {"available": False, "series": {}}
+    span = HISTORY_RANGES.get(range)
+    if span is None:
+        raise HTTPException(status_code=400, detail="err.bad_range")
+    now = time.time()
+    start = now - span
+
+    if kind == "host":
+        if not ip:
+            raise HTTPException(status_code=400, detail="err.host_not_found")
+        names = [f"{ip}|down", f"{ip}|up"]
+        series = store.read("host", names, start, now, MAX_POINTS)
+    elif kind == "peer":
+        # A WireGuard peer is identified by its public key rather than an
+        # address, but it comes and goes like a device, so it is kept under the
+        # same rules and read the same way.
+        if not key:
+            raise HTTPException(status_code=400, detail="err.peer_not_found")
+        names = [f"peer|{key}|down", f"peer|{key}|up"]
+        series = store.read("host", names, start, now, MAX_POINTS)
+    elif kind == "system":
+        names = [f"sys|{key}" for key in ("cpu", "memory", "swap", "temperature",
+                                          "mbuf", "states", "disk")]
+        series = store.read("agg", names, start, now, MAX_POINTS)
+    else:
+        names = ["net|down", "net|up"]
+        for iface in _iface_names():
+            names += [f"iface|{iface}|down", f"iface|{iface}|up"]
+        series = store.read("agg", names, start, now, MAX_POINTS)
+
+    return {
+        "available": True,
+        "range": range,
+        # per-device series live on the hour shelf whatever the period, and
+        # "host" is not the only kind that means a device
+        # Inferred from the answer rather than guessed: the store picks its shelf
+        # from what it actually holds for the window, so anything computed here
+        # from the span alone would sometimes name the other one.
+        "step": _step_of(series),
+        "from": int(start),
+        "to": int(now),
+        # empty series are dropped: a range reaching back further than the store
+        # has been running should offer what exists rather than a row of blanks
+        "series": {name: points for name, points in series.items() if points},
+    }
+
+
+@app.get("/api/history/devices")
+async def history_devices():
+    """Hosts and peers the store has figures for, named as the interface shows them."""
+    names = tracker.history.devices()
+    out = []
+    for name in names:
+        if name.startswith("peer|"):
+            key = name[len("peer|"):]
+            peer = next((p for p in tracker.wg_peers if p.get("public_key") == key), None)
+            label = (peer or {}).get("name") or key[:10]
+            out.append({"key": f"peer:{key}", "label": label, "kind": "peer", "live": peer is not None})
+        else:
+            host = tracker.hosts.get(name)
+            label = f"{host.name} · {name}" if host and host.name else name
+            out.append({"key": f"host:{name}", "label": label, "kind": "host",
+                        "live": host is not None, "addr": name})
+    out.sort(key=_device_order)
+    return {"devices": out}
+
+
+def _device_order(dev: dict) -> tuple:
+    """Peers, then what is on the network now, then everything else.
+
+    Five weeks of history on a real firewall is not a list of your devices: this
+    one holds 466 addresses for 19 live hosts, the rest being the far ends of
+    connections that passed through once. Sorted by label they interleave, and
+    the subnet you actually own is scattered through them.
+
+    Within a group a named device sorts by its name and a bare address by its
+    octets as numbers — as strings, 10.244.2.221 lands between 1.1.1.1 and
+    100.4.56.134, which is how the picker managed to look shuffled while being
+    perfectly sorted.
+    """
+    group = 0 if dev["kind"] == "peer" else (1 if dev["live"] else 2)
+    addr = dev.get("addr", "")
+    parts = addr.split(".")
+    octets = tuple(int(p) for p in parts) if len(parts) == 4 and all(
+        p.isdigit() and len(p) <= 3 for p in parts) else (256, 0, 0, 0)
+    named = " · " in dev["label"] or dev["kind"] == "peer"
+    return (group, not named, dev["label"].lower() if named else "", octets, addr)
+
+
+@app.get("/api/history/span")
+async def history_span():
+    """What the store holds, and how much room it takes."""
+    return tracker.history.span()
 
 
 @app.get("/api/interfaces")

@@ -47,8 +47,17 @@ const I18N = {
     "app.title": "Statedash — активные хосты",
     "nav.hosts": "Активные хосты",
     "nav.settings": "Настройки",
+    "nav.history": "История",
+    "hist.hint": "Всё на этой странице — из хранилища, а не текущее состояние. Выбранный промежуток относится ко всем графикам раздела. Линия показывает среднее за интервал, подсказка — пик внутри него. Точка в минуту хранится неделю, точка в час — пять недель.",
+    "hist.device": "Устройство",
+    "hist.device.none": "По этому устройству за выбранный промежуток данных нет",
+    "hist.device.pick": "Выбрать устройство",
+    "hist.device.search": "Поиск: имя или адрес",
+    "hist.device.vpn": "VPN",
+    "hist.device.live": "Сейчас в сети",
+    "hist.device.past": "Были раньше",
+    "hist.device.nomatch": "Ничего не найдено",
     "sys.title": "Файрвол",
-    "sys.hint": "Как себя чувствует сама машина, а не сеть на ней. Раздел появляется только при выданной привилегии Lobby: Dashboard; плитки, по которым железу нечего сообщить — swap, датчики температуры — не показываются вовсе.",
     "sys.cpu": "Процессор",
     "sys.cpu.sub": "польз. {u}% · сист. {s}%",
     "sys.memory": "Память",
@@ -240,10 +249,27 @@ const I18N = {
     "badge.mock": "тестовые данные",
     "theme.title": "Переключить тему",
     "chart.title": "Пропускная способность",
-    "chart.hint": "Сумма скоростей хостов на наблюдаемых интерфейсах, а не пропускная способность WAN. Обмен между двумя локальными хостами попадает и в загрузку, и в отдачу.",
     "chart.pick": "Показать только эту линию. Повторное нажатие вернёт все",
-    "chart.hide": "Скрыть",
-    "chart.show": "Показать",
+    "chart.hide": "Скрыть график",
+    "chart.toggle.title": "Показать или скрыть график пропускной способности",
+    "sys.tiles.hide": "Скрыть",
+    "range.title": "За какой промежуток показывать",
+    "range.5m": "5 минут",
+    "range.15m": "15 минут",
+    "range.30m": "30 минут",
+    "range.1h": "1 час",
+    "range.3h": "3 часа",
+    "range.6h": "6 часов",
+    "range.12h": "12 часов",
+    "range.24h": "24 часа",
+    "range.2d": "2 дня",
+    "range.7d": "7 дней",
+    "range.30d": "30 дней",
+    "range.empty": "За этот промежуток данных пока нет — история копится с момента запуска",
+    "err.bad_range": "Такого промежутка нет",
+    "tip.peak": "пик",
+    "chart.show": "График",
+    "sys.tiles.show": "Показать",
     "hosts.title": "Хосты",
     "cols.btn": "Колонки",
     "hosts.speed": "Скорость",
@@ -384,8 +410,17 @@ const I18N = {
     "app.title": "Statedash — active hosts",
     "nav.hosts": "Active hosts",
     "nav.settings": "Settings",
+    "nav.history": "History",
+    "hist.hint": "Everything on this page comes from the store rather than from the moment. The chosen period applies to every chart in the section. The line is the average over each interval and the tooltip names the peak inside it. One point a minute is kept a week, one an hour five weeks.",
+    "hist.device": "Device",
+    "hist.device.none": "Nothing stored for this device over the chosen period",
+    "hist.device.pick": "Choose a device",
+    "hist.device.search": "Search: name or address",
+    "hist.device.vpn": "VPN",
+    "hist.device.live": "On the network now",
+    "hist.device.past": "Seen before",
+    "hist.device.nomatch": "Nothing matches",
     "sys.title": "Firewall",
-    "sys.hint": "How the machine itself is doing, as opposed to the network on it. The section appears only when the Lobby: Dashboard privilege is granted; a tile the hardware has nothing to report for — swap, temperature sensors — is left out rather than shown as zero.",
     "sys.cpu": "CPU",
     "sys.cpu.sub": "user {u}% · sys {s}%",
     "sys.memory": "Memory",
@@ -577,10 +612,27 @@ const I18N = {
     "badge.mock": "mock data",
     "theme.title": "Toggle theme",
     "chart.title": "Throughput",
-    "chart.hint": "The sum of host rates on the watched interfaces, not WAN throughput. Traffic between two local hosts lands in both the download and the upload line.",
     "chart.pick": "Show only this line. Click again to bring them all back",
-    "chart.hide": "Hide",
-    "chart.show": "Show",
+    "chart.hide": "Hide chart",
+    "chart.toggle.title": "Show or hide the throughput chart",
+    "sys.tiles.hide": "Hide",
+    "range.title": "Period to show",
+    "range.5m": "5 minutes",
+    "range.15m": "15 minutes",
+    "range.30m": "30 minutes",
+    "range.1h": "1 hour",
+    "range.3h": "3 hours",
+    "range.6h": "6 hours",
+    "range.12h": "12 hours",
+    "range.24h": "24 hours",
+    "range.2d": "2 days",
+    "range.7d": "7 days",
+    "range.30d": "30 days",
+    "range.empty": "Nothing stored for this period yet — history builds up from first run",
+    "err.bad_range": "No such period",
+    "tip.peak": "peak",
+    "chart.show": "Chart",
+    "sys.tiles.show": "Show",
     "hosts.title": "Hosts",
     "cols.btn": "Columns",
     "hosts.speed": "Speed",
@@ -750,6 +802,8 @@ const state = {
   sort: { key: "rate", dir: "desc" },  // rate = download + upload (the default)
   tableHover: false,    // while the cursor is over the table rows are not reordered
   rows: new Map(),      // ip -> table row elements
+  demo: false,          // public instance: settings on the server are locked
+  history: false,       // the long-term store is there and writable
   sparkIps: [],         // hosts on the current page — the only ones needing a sparkline
   sparkCache: new Map(),// ip -> last line seen, so paging back does not blank it
   selectedIp: null,
@@ -844,6 +898,18 @@ function fmtClock(ts) {
   return new Date(ts * 1000).toLocaleTimeString(locale(), timeOpts());
 }
 
+/** An axis label for a chart covering `span` seconds. */
+function fmtAxisTime(ts, span) {
+  const date = new Date(ts * 1000);
+  if (span <= 2 * 86400) {
+    return date.toLocaleTimeString(locale(), timeOpts({ hour: "2-digit", minute: "2-digit" }));
+  }
+  if (span <= 80 * 86400) {
+    return date.toLocaleDateString(locale(), { day: "2-digit", month: "2-digit" });
+  }
+  return date.toLocaleDateString(locale(), { month: "short", year: "2-digit" });
+}
+
 function fmtDateTime(ts) {
   return new Date(ts * 1000).toLocaleString(locale(), timeOpts());
 }
@@ -887,10 +953,27 @@ const DEFAULT_SERIES = [
   { idx: 2, colorVar: "--series-up", labelKey: "top.up", dash: [] },
 ];
 
-function timeChart(canvas, tip) {
-  const geom = { padL: 56, padR: 12, padT: 8, padB: 22 };
+function timeChart(canvas, tip, opts = {}) {
+  // Percentages and bit rates cannot share an axis, and the firewall's own
+  // readings are percentages. The only differences are the floor the scale will
+  // not go below and how a value is spelled, so they are the whole option.
+  const percent = opts.unit === "percent";
+  // An axis fitted to the data instead of anchored at zero. Only worth it where
+  // the interesting movement is small next to the value: a disk that goes from
+  // 18.0 to 18.4 per cent over a month is a trend, and on a nought-to-twenty
+  // scale it is a straight line four thousandths of the height off the bottom.
+  const zoom = !!opts.zoom;
+  const geom = { padL: percent ? 44 : 56, padR: 12, padT: 8, padB: 22 };
+  const fmtValue = (v) => (percent ? [Math.round(v * 10) / 10, "%"] : fmtBits(v));
   let data = [];   // [[ts, v0, v1, ...], ...]
   let series = DEFAULT_SERIES;
+  let peaks = null;  // same shape as data, without the timestamp; stored ranges only
+  // The window the chart is meant to be showing, when the caller knows it.
+  // Without one the axis is the extent of the data, which is right for the live
+  // chart and wrong for a stored range: four cards under one period control
+  // each drew their own span, so a device with twenty minutes of history filled
+  // the same width as a day of throughput and only the labels said otherwise.
+  let frame = null;
 
   function prep() {
     const dpr = window.devicePixelRatio || 1;
@@ -926,13 +1009,37 @@ function timeChart(canvas, tip) {
     ctx.clearRect(0, 0, w, h);
     if (data.length < 2) return;
 
-    const t0 = data[0][0];
-    const t1 = data[data.length - 1][0];
+    const t0 = frame ? frame.from : data[0][0];
+    const t1 = frame ? frame.to : data[data.length - 1][0];
     const span = Math.max(t1 - t0, 1);
-    const maxVal = niceMax(Math.max(
-      ...data.map((d) => Math.max(...series.map((s) => d[s.idx] || 0))), 1000));
+    let minVal = 0;
+    let maxVal = percent
+      ? Math.min(100, niceMax(Math.max(
+          ...data.map((d) => Math.max(...series.map((s) => d[s.idx] || 0))), 10)))
+      : niceMax(Math.max(
+          ...data.map((d) => Math.max(...series.map((s) => d[s.idx] || 0))), 1000));
+    if (zoom) {
+      const seen = [];
+      for (const row of data) {
+        for (const s of series) {
+          if (row[s.idx] != null) seen.push(row[s.idx]);
+        }
+      }
+      if (seen.length) {
+        const lo = Math.min(...seen);
+        const hi = Math.max(...seen);
+        // room above and below so the line is not drawn along an edge, and a
+        // floor under it so a series that never moves still gets a scale
+        const pad = Math.max((hi - lo) * 0.2, percent ? 0.2 : 1);
+        minVal = Math.max(0, Math.floor((lo - pad) * 10) / 10);
+        maxVal = Math.ceil((hi + pad) * 10) / 10;
+        if (percent) maxVal = Math.min(100, maxVal);
+        if (maxVal <= minVal) maxVal = minVal + 1;
+      }
+    }
+    const range = maxVal - minVal || 1;
     const x = (ts) => padL + ((ts - t0) / span) * plotW;
-    const y = (v) => padT + plotH - (v / maxVal) * plotH;
+    const y = (v) => padT + plotH - ((v - minVal) / range) * plotH;
 
     // grid and Y axis labels — 4 steps
     ctx.strokeStyle = cssVar("--grid");
@@ -942,25 +1049,29 @@ function timeChart(canvas, tip) {
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
     for (let i = 0; i <= 4; i++) {
-      const value = (maxVal / 4) * i;
+      const value = minVal + (range / 4) * i;
       const yy = y(value);
       ctx.beginPath();
       ctx.moveTo(padL, yy);
       ctx.lineTo(w - padR, yy);
       ctx.stroke();
-      const [fv, fu] = fmtBits(value);
+      const [fv, fu] = fmtValue(value);
       // keep only the unit prefix on the axis (K/M/G) — the full label does not fit
-      const prefix = fu.replace(/бит\/с|bit\/s/, "");
-      ctx.fillText(i === 0 ? "0" : fv + " " + prefix, padL - 8, yy);
+      const prefix = percent ? fu : fu.replace(/бит\/с|bit\/s/, "");
+      // "0" is only the bottom label when the axis actually starts there
+      ctx.fillText(i === 0 && !minVal ? "0" : fv + (percent ? prefix : " " + prefix),
+                   padL - 8, yy);
     }
 
-    // time labels
+    // Time labels, in units the span actually calls for: a clock on a chart
+    // covering a year says nothing, and a date on one covering a quarter of an
+    // hour says it four times over.
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     for (let i = 0; i <= 3; i++) {
       const ts = t0 + (span / 3) * i;
       ctx.fillText(
-        new Date(ts * 1000).toLocaleTimeString(locale(), timeOpts({ hour: "2-digit", minute: "2-digit" })),
+        fmtAxisTime(ts, span),
         Math.min(Math.max(x(ts), padL + 14), w - padR - 14),
         padT + plotH + 6
       );
@@ -976,32 +1087,88 @@ function timeChart(canvas, tip) {
     // the haze under a line turns to mud once several overlap, so it is drawn
     // only while the chart holds a single pair
     const fill = series.length <= 2;
+    // How far apart the samples normally are, so an actual hole can be told from
+    // the ordinary spacing. The median rather than the mean: one long gap must
+    // not raise the bar it is measured against.
+    const gaps = [];
+    for (let i = 1; i < data.length; i++) gaps.push(data[i][0] - data[i - 1][0]);
+    gaps.sort((a, b) => a - b);
+    const step = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0;
+
+    // Everything from here on is cut to the plot rectangle. The store is asked
+    // for one bucket more than the window so the line arrives from off-screen
+    // instead of starting a bucket-width inside the left edge; without a clip
+    // that overhang would be painted across the Y axis labels.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(padL, padT, plotW, plotH);
+    ctx.clip();
+
     for (const s of series) {
       const color = cssVar(s.colorVar);
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
+      // A missing value is not a zero and a hole in time is not a straight line
+      // across it. Both used to be drawn as measurement: a series absent from
+      // the store ran flat along the bottom as though it were idle, and hours
+      // with nothing recorded were joined by a steady rate nobody had measured.
+      const runs = [];
+      let run = null;
+      for (let i = 0; i < data.length; i++) {
+        const value = data[i][s.idx];
+        const broken = run && step && (data[i][0] - run[run.length - 1][0]) > step * 3;
+        if (value == null || broken) {
+          if (run && run.length) runs.push(run);
+          run = value == null ? null : [data[i]];
+          continue;
+        }
+        if (!run) run = [];
+        run.push(data[i]);
+      }
+      if (run && run.length) runs.push(run);
+
       if (fill) {
-        ctx.beginPath();
-        ctx.moveTo(x(t0), padT + plotH);
-        for (const d of data) ctx.lineTo(x(d[0]), y(d[s.idx] || 0));
-        ctx.lineTo(x(t1), padT + plotH);
-        ctx.closePath();
-        ctx.globalAlpha = 0.1;
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.globalAlpha = 1;
+        for (const piece of runs) {
+          if (piece.length < 2) continue;
+          ctx.beginPath();
+          ctx.moveTo(x(piece[0][0]), padT + plotH);
+          for (const d of piece) ctx.lineTo(x(d[0]), y(d[s.idx]));
+          ctx.lineTo(x(piece[piece.length - 1][0]), padT + plotH);
+          ctx.closePath();
+          ctx.globalAlpha = 0.1;
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
       }
       ctx.beginPath();
-      for (let i = 0; i < data.length; i++) {
-        const px = x(data[i][0]);
-        const py = y(data[i][s.idx] || 0);
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      for (const piece of runs) {
+        piece.forEach((d, i) => {
+          const px = x(d[0]);
+          const py = y(d[s.idx]);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
       }
       ctx.setLineDash(s.dash || []);
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.setLineDash([]);
+
+      // With few points, or with one series dwarfed by another sharing the axis,
+      // a line pinned to the bottom is indistinguishable from an empty chart —
+      // a device doing three kilobits beside one doing a hundred simply looks
+      // absent. A mark at each sample says the measurement was taken.
+      if (data.length <= 80) {
+        ctx.fillStyle = color;
+        for (const piece of runs) {
+          for (const d of piece) {
+            ctx.beginPath();
+            ctx.arc(x(d[0]), y(d[s.idx]), 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
     }
 
     // crosshair and markers with a surface-coloured ring
@@ -1024,6 +1191,7 @@ function timeChart(canvas, tip) {
         ctx.stroke();
       }
     }
+    ctx.restore();
   }
 
   canvas.addEventListener("mousemove", (event) => {
@@ -1050,14 +1218,23 @@ function timeChart(canvas, tip) {
     // stacked on screen at the point being hovered
     const ranked = [...series].sort((a, b) => (point[b.idx] || 0) - (point[a.idx] || 0));
     const rows = ranked.map((s) => {
-      const [value, unit] = fmtBits(point[s.idx] || 0);
+      const [value, unit] = fmtValue(point[s.idx] || 0);
       const label = s.label || t(s.labelKey);
-      return `<div class="tip-row"><span class="dot" style="background:${cssVar(s.colorVar)}"></span>${label}: ${value} ${unit}</div>`;
+      let extra = "";
+      const peak = peaks && peaks[idx] ? peaks[idx][s.idx] : null;
+      if (peak != null && peak > (point[s.idx] || 0)) {
+        const [pv, pu] = fmtValue(peak);
+        extra = ` <span class="tip-peak">· ${t("tip.peak")} ${pv} ${pu}</span>`;
+      }
+      return `<div class="tip-row"><span class="dot" style="background:${cssVar(s.colorVar)}"></span>${label}: ${value} ${unit}${extra}</div>`;
     });
-    tip.innerHTML = `<div class="tip-time">${fmtClock(point[0])}</div>` + rows.join("");
-    tip.hidden = false;
     const t0 = data[0][0];
     const span = Math.max(data[data.length - 1][0] - t0, 1);
+    // On a month-long chart a bare clock names one of thirty identical moments,
+    // so the date joins it once the span is longer than a day.
+    const when = span > 86400 ? fmtDateTime(point[0]) : fmtClock(point[0]);
+    tip.innerHTML = `<div class="tip-time">${when}</div>` + rows.join("");
+    tip.hidden = false;
     const px = geom.padL + ((point[0] - t0) / span) * plotW;
     const tipX = px + 12 + tip.offsetWidth > rect.width ? px - tip.offsetWidth - 12 : px + 12;
     tip.style.left = tipX + "px";
@@ -1070,9 +1247,15 @@ function timeChart(canvas, tip) {
   });
 
   return {
-    draw(newData, newSeries) {
+    /** `peaks` is optional and parallel to `data`: the highest value inside each
+     *  bucket, which only the stored ranges have. The line stays the average —
+     *  drawing both would double every series — and the tooltip carries the peak,
+     *  so an hour that averaged calmly still admits to its burst. */
+    draw(newData, newSeries, newPeaks, newFrame) {
       data = newData;
       series = newSeries || DEFAULT_SERIES;
+      peaks = newPeaks || null;
+      frame = newFrame || null;
       render();
     },
     redraw() { render(); },
@@ -1130,6 +1313,538 @@ function buildThroughputSeries(ifaceTotals) {
   return { points, series };
 }
 
+/* ---------- the History section ---------- */
+/*
+ * "What is happening" and "what happened" are different questions, and mixing
+ * them cost three attempts at placing one period control on a page that is
+ * otherwise entirely live. They are separate pages now: everything here is read
+ * from the store, everything there is read from memory, and the period governs
+ * this page alone — which is why it can sit at the top of it and always mean
+ * something.
+ */
+
+const RANGES = [
+  { key: "5m", seconds: 300 },
+  { key: "15m", seconds: 900 },
+  { key: "30m", seconds: 1800 },
+  { key: "1h", seconds: 3600 },
+  { key: "3h", seconds: 10800 },
+  { key: "6h", seconds: 21600 },
+  { key: "12h", seconds: 43200 },
+  { key: "24h", seconds: 86400 },
+  { key: "2d", seconds: 172800 },
+  { key: "7d", seconds: 604800 },
+  { key: "30d", seconds: 2592000 },
+];
+const DEFAULT_RANGE = "24h";
+
+let historyTimer = null;
+let histDevice = "";       // "host:1.2.3.4" or "peer:<public key>"
+
+function currentRange() {
+  const saved = localStorage.getItem("statedash-range");
+  return RANGES.some((r) => r.key === saved) ? saved : DEFAULT_RANGE;
+}
+
+function rangeInfo(key) {
+  return RANGES.find((r) => r.key === key) || RANGES.find((r) => r.key === DEFAULT_RANGE);
+}
+
+// Eleven periods will not fit as a row of buttons, so they live in the same kind
+// of menu the interface picker uses.
+const rangeMenu = document.createElement("div");
+rangeMenu.className = "col-picker range-menu";
+rangeMenu.hidden = true;
+rangeMenu.addEventListener("click", (event) => event.stopPropagation());
+document.addEventListener("click", (event) => {
+  if (!rangeMenu.hidden && !rangeMenu.contains(event.target)) rangeMenu.hidden = true;
+});
+
+function buildRangePicker() {
+  const box = $("#hist-range");
+  if (!box) return;
+  if (!rangeMenu.parentNode) vizRoot.appendChild(rangeMenu);
+  box.replaceChildren(
+    Object.assign(document.createElement("span"), { textContent: t("range." + currentRange()) }),
+    Object.assign(document.createElement("span"), { className: "caret", textContent: "▾" }),
+  );
+  box.onclick = (event) => {
+    event.stopPropagation();
+    if (!rangeMenu.hidden) { rangeMenu.hidden = true; return; }
+    rangeMenu.replaceChildren(...RANGES.map((r) => {
+      const item = Object.assign(document.createElement("button"), {
+        className: "range-item" + (r.key === currentRange() ? " active" : ""),
+        type: "button",
+        textContent: t("range." + r.key),
+      });
+      item.addEventListener("click", () => { rangeMenu.hidden = true; setRange(r.key); });
+      return item;
+    }));
+    const rect = box.getBoundingClientRect();
+    rangeMenu.style.top = rect.bottom + 6 + "px";
+    rangeMenu.style.left = Math.max(Math.min(rect.left, window.innerWidth - 150), 8) + "px";
+    rangeMenu.style.minWidth = Math.max(rect.width, 120) + "px";
+    rangeMenu.hidden = false;
+  };
+}
+
+function setRange(range) {
+  localStorage.setItem("statedash-range", range);
+  buildRangePicker();
+  loadHistoryView();
+}
+
+/** The section is only there when there is something behind it. */
+function applyHistoryNav() {
+  const item = $("#nav-history");
+  if (item) item.hidden = !state.history;
+  // a period chosen before the store went away would leave this page blank
+  // `state.view` never existed — this read was the only mention of it in the
+  // file, so the escape never fired and the page stayed frozen with its menu
+  // entry gone. The DOM knows which view is open.
+  if (!state.history && historyOpen()) switchView("hosts");
+}
+
+// The History section's charts were in no redraw hook at all: switching theme
+// left them in the old palette, and widening the window left a small bitmap
+// stretched across a wide card.
+function redrawHistoryCharts() {
+  for (const chart of [histNetChart, histSysChart, histDiskChart, histDeviceChart]) {
+    if (chart) chart.redraw();
+  }
+}
+
+function historyOpen() {
+  return !$("#view-history").hidden;
+}
+
+let historyLoading = false;
+// The period a round is drawing, held for as long as the round lasts. Every
+// fetch in it asks for this rather than for whatever is chosen at the moment it
+// happens to run: the first answer is awaited before the other four are asked
+// for, so a period changed inside that gap used to send the second half of the
+// round to a different window. Firewall and Disk would be showing a week while
+// the picker and the other two charts said five minutes, on one page, with
+// nothing to reveal it but the axis labels.
+let historyRound = "";
+// A round that arrives while one is running is remembered rather than dropped.
+// Dropping it left the page on the old period until the minute timer came
+// round, which is the same wrong picture, only for longer.
+let historyAgain = false;
+
+/**
+ * Everything on the page, for the period now chosen.
+ *
+ * The timer is created once and never inside the loader. Clearing it at the top
+ * and setting it again at the bottom looks equivalent, but the middle is
+ * awaited: two overlapping runs each created an interval and only the last id
+ * was remembered, so changing the period a few times left several alive at
+ * once, each spawning more. The `historyLoading` flag drops a tick that arrives
+ * while the previous one is still fetching.
+ */
+async function loadHistoryView() {
+  if (!historyOpen() || !state.history) return;
+  if (historyLoading) { historyAgain = true; return; }
+  historyLoading = true;
+  try {
+    do {
+      historyAgain = false;
+      historyRound = currentRange();
+      await loadDeviceList();
+      // one answer serves both firewall charts; they used to fetch it separately
+      const system = await fetchRange("kind=system");
+      await Promise.all([loadNetHistory(), loadSystemHistory(system),
+                         loadDiskHistory(system), loadDeviceHistory()]);
+      // a period chosen while the round was in flight gets its own round, so
+      // what is on screen at the end is what the picker says
+    } while (historyAgain && historyOpen() && currentRange() !== historyRound);
+  } finally {
+    historyRound = "";
+    historyLoading = false;
+  }
+  // a minute is the finest the store keeps, so asking oftener returns the same
+  if (!historyTimer) {
+    historyTimer = setInterval(() => { if (historyOpen()) loadHistoryView(); }, 60000);
+  }
+}
+
+async function fetchRange(query) {
+  try {
+    const range = historyRound || currentRange();
+    const res = await fetch(`/api/history?range=${encodeURIComponent(range)}&${query}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Merge the store's per-series arrays onto one time axis.
+ *
+ * Returns the matrix the chart wants plus a parallel one of peaks: the line is
+ * the average over each bucket and the tooltip names the highest value inside
+ * it, because an hour of averages hides the burst that made the hour worth
+ * looking at.
+ */
+function mergeSeries(data, use) {
+  const times = new Set();
+  for (const [key] of use) for (const point of data.series[key] || []) times.add(point[0]);
+  const axis = [...times].sort((a, b) => a - b);
+  const at = new Map(axis.map((ts, i) => [ts, i]));
+  const points = axis.map((ts) => [ts]);
+  const peaks = axis.map(() => []);
+  use.forEach(([key], slot) => {
+    for (const point of data.series[key] || []) {
+      const i = at.get(point[0]);
+      points[i][slot + 1] = point[1];
+      peaks[i][slot + 1] = point[2];
+    }
+  });
+  return { points, peaks };
+}
+
+function legendInto(box, series) {
+  if (!box) return;
+  box.replaceChildren(...series.map((s) => {
+    const item = Object.assign(document.createElement("span"), { className: "legend-item" });
+    const key = Object.assign(document.createElement("span"), { className: "key" });
+    key.style.background = cssVar(s.colorVar);
+    item.append(key, document.createTextNode(s.label));
+    return item;
+  }));
+}
+
+/**
+ * Fold a long series down to about one point every two pixels.
+ *
+ * A month of hourly points across a thousand pixels draws as a block rather than
+ * a line. Averaging the group keeps the shape; the highest peak in the group is
+ * carried through rather than averaged, so the tooltip still admits what the
+ * smoothing took out.
+ */
+function foldToWidth(canvas, points, peaks) {
+  const width = Math.max(200, (canvas ? canvas.getBoundingClientRect().width : 900) - 68);
+  const target = Math.max(60, Math.floor(width / 2));
+  if (points.length <= target * 1.5) return [points, peaks];
+  const size = Math.ceil(points.length / target);
+  const outPoints = [];
+  const outPeaks = [];
+  for (let start = 0; start < points.length; start += size) {
+    const group = points.slice(start, start + size);
+    const groupPeaks = peaks.slice(start, start + size);
+    const row = [group[Math.floor(group.length / 2)][0]];
+    const peakRow = [];
+    for (let col = 1; col < group[0].length; col++) {
+      let sum = 0, seen = 0, high = 0;
+      for (let i = 0; i < group.length; i++) {
+        const value = group[i][col];
+        if (value == null) continue;
+        sum += value;
+        seen++;
+        const peak = groupPeaks[i] ? groupPeaks[i][col] : 0;
+        if (peak > high) high = peak;
+      }
+      row[col] = seen ? sum / seen : undefined;
+      peakRow[col] = high;
+    }
+    outPoints.push(row);
+    outPeaks.push(peakRow);
+  }
+  return [outPoints, outPeaks];
+}
+
+/* ---- how much is actually there ---- */
+
+// A card with one point in it draws nothing — a line needs two — so for the
+// first minute of a new install all four charts were blank canvases with no
+// word of explanation, which reads as a fault rather than as a store that has
+// only just started. The note is what says so, and it belongs to whether
+// anything is drawable, not to whether a series exists.
+function drawable(data) {
+  return !!data && !!data.series
+    && Object.values(data.series).some((points) => points.length >= 2);
+}
+
+/* ---- throughput ---- */
+
+async function loadNetHistory() {
+  const data = await fetchRange("kind=throughput");
+  if (!data || !data.available) return;
+  const keys = Object.keys(data.series);
+  const note = $("#hist-net-empty");
+  if (note) note.hidden = drawable(data);
+  if (!drawable(data)) {
+    histNetChart.draw([], DEFAULT_SERIES);
+    legendInto($("#hist-net-legend"), []);
+    return;
+  }
+  const ifaces = [...new Set(keys.filter((k) => k.startsWith("iface|")).map((k) => k.split("|")[1]))].sort();
+  const use = ifaces.length >= 2
+    ? ifaces.flatMap((name) => [[`iface|${name}|down`, name, "top.down"], [`iface|${name}|up`, name, "top.up"]])
+    : [["net|down", "", "top.down"], ["net|up", "", "top.up"]];
+  const { points, peaks } = mergeSeries(data, use);
+  const series = use.map(([, name, dirKey], slot) => {
+    const label = (ifaceList.find((i) => i.name === name) || {}).label || name;
+    return {
+      key: `${name}|${dirKey}`,
+      idx: slot + 1,
+      colorVar: SERIES_COLORS[slot % SERIES_COLORS.length],
+      label: name ? `${label} ${t(dirKey)}` : t(dirKey),
+      dash: IFACE_DASHES[Math.floor(slot / 2) % IFACE_DASHES.length],
+    };
+  });
+  const [drawn, drawnPeaks] = foldToWidth($("#hist-net"), points, peaks);
+  histNetChart.draw(drawn, series, drawnPeaks, { from: data.from, to: data.to });
+  legendInto($("#hist-net-legend"), series);
+}
+
+/* ---- the firewall's own readings ---- */
+
+// Percentages only: temperature is degrees and would need its own scale, and a
+// tile is enough for it.
+const SYS_HISTORY = [
+  ["sys|cpu", "sys.cpu"], ["sys|memory", "sys.memory"], ["sys|swap", "sys.swap"],
+  ["sys|mbuf", "sys.mbuf"], ["sys|states", "sys.states"],
+];
+// Six readings need six colours; the throughput chart's four cycle, and two
+// identical squares in a legend say nothing.
+const SYS_COLORS = ["--series-down", "--series-up", "--series-3",
+                    "--series-4", "--flow-7", "--flow-5"];
+
+async function loadSystemHistory(data) {
+  const card = $("#hist-sys-card");
+  if (!data || !data.available) return;
+  const use = SYS_HISTORY.filter(([key]) => (data.series[key] || []).length);
+  if (card) card.hidden = !use.length;
+  if (!use.length) return;
+  const note = $("#hist-sys-empty");
+  const enough = use.some(([key]) => (data.series[key] || []).length >= 2);
+  if (note) note.hidden = enough;
+  if (!enough) {
+    histSysChart.draw([], []);
+    legendInto($("#hist-sys-legend"), []);
+    return;
+  }
+  const { points, peaks } = mergeSeries(data, use);
+  const series = use.map(([key, labelKey], slot) => ({
+    key,
+    idx: slot + 1,
+    colorVar: SYS_COLORS[slot % SYS_COLORS.length],
+    label: t(labelKey),
+  }));
+  const [drawn, drawnPeaks] = foldToWidth($("#hist-sys"), points, peaks);
+  histSysChart.draw(drawn, series, drawnPeaks, { from: data.from, to: data.to });
+  legendInto($("#hist-sys-legend"), series);
+}
+
+/* ---- the disk, on its own ---- */
+
+/**
+ * Filling a disk is measured in per cent a month, so beside a processor that
+ * swings by forty in a minute it is a flat line crossing everything else. Its
+ * own chart gives it an axis fitted to its own range, where a month of filling
+ * up is the one thing on this page worth reading as a trend.
+ */
+async function loadDiskHistory(data) {
+  const card = $("#hist-disk-card");
+  if (!data || !data.available) return;
+  const rows = data.series["sys|disk"] || [];
+  if (card) card.hidden = !rows.length;
+  if (!rows.length) return;
+  const note = $("#hist-disk-empty");
+  if (note) note.hidden = rows.length >= 2;
+  if (rows.length < 2) {
+    histDiskChart.draw([], []);
+    legendInto($("#hist-disk-legend"), []);
+    return;
+  }
+  const { points, peaks } = mergeSeries(data, [["sys|disk"]]);
+  const series = [{ key: "sys|disk", idx: 1, colorVar: "--flow-5", label: t("sys.disk") }];
+  const [drawn, drawnPeaks] = foldToWidth($("#hist-disk"), points, peaks);
+  histDiskChart.draw(drawn, series, drawnPeaks, { from: data.from, to: data.to });
+  legendInto($("#hist-disk-legend"), series);
+}
+
+/* ---- one device ---- */
+
+// What the store actually holds figures for, rather than everything on the
+// network: a device first seen a minute ago has nothing to show, and an empty
+// chart reads as a fault rather than an answer.
+let histDevices = [];
+
+async function loadDeviceList() {
+  try {
+    const res = await fetch("/api/history/devices");
+    if (!res.ok) return;
+    histDevices = (await res.json()).devices || [];
+  } catch { /* keep the previous list */ }
+  buildDevicePicker();
+}
+
+// A plain list of every device on the network is fine at a dozen and unusable at
+// two hundred: no way to search, and the one you want is somewhere in the middle
+// of an alphabet. This is the same menu the interfaces and periods use, with a
+// filter at the top — the field matches the one above the hosts table, so
+// searching means the same thing in both places.
+const deviceMenu = document.createElement("div");
+deviceMenu.className = "col-picker device-menu";
+deviceMenu.hidden = true;
+deviceMenu.addEventListener("click", (event) => event.stopPropagation());
+document.addEventListener("click", (event) => {
+  if (!deviceMenu.hidden && !deviceMenu.contains(event.target)) deviceMenu.hidden = true;
+});
+
+function deviceLabel(key) {
+  const found = histDevices.find((d) => d.key === key);
+  return found ? found.label : "";
+}
+
+function buildDevicePicker() {
+  const button = $("#hist-device");
+  if (!button) return;
+  if (!deviceMenu.parentNode) vizRoot.appendChild(deviceMenu);
+  if (!histDevices.some((d) => d.key === histDevice)) {
+    histDevice = histDevices.length ? histDevices[0].key : "";
+  }
+  button.hidden = !histDevices.length;
+  button.replaceChildren(
+    Object.assign(document.createElement("span"), { textContent: deviceLabel(histDevice) }),
+    Object.assign(document.createElement("span"), { className: "caret", textContent: "▾" }),
+  );
+  button.onclick = (event) => {
+    event.stopPropagation();
+    if (!deviceMenu.hidden) { deviceMenu.hidden = true; return; }
+    openDeviceMenu(button);
+  };
+}
+
+function openDeviceMenu(button) {
+  const search = Object.assign(document.createElement("input"), {
+    className: "search device-search", type: "search", placeholder: t("hist.device.search"),
+  });
+  const list = Object.assign(document.createElement("div"), { className: "device-list" });
+
+  const render = () => {
+    const needle = search.value.trim().toLowerCase();
+    // the address is worth matching as well as the name: a device with no name
+    // is only findable by it
+    const shown = histDevices.filter((d) => !needle
+      || d.label.toLowerCase().includes(needle)
+      || d.key.toLowerCase().includes(needle));
+    // Five weeks of history holds every address the firewall has seen, most of
+    // them the far end of one connection. Saying which group a run belongs to is
+    // what makes the difference between a list and a heap.
+    const groupOf = (d) => (d.kind === "peer" ? "vpn" : d.live ? "live" : "past");
+    let group = "";
+    const rows = [];
+    for (const d of shown) {
+      const g = groupOf(d);
+      if (g !== group) {
+        group = g;
+        rows.push(Object.assign(document.createElement("div"),
+          { className: "device-group", textContent: t("hist.device." + g) }));
+      }
+      const item = Object.assign(document.createElement("button"), {
+        className: "range-item" + (d.key === histDevice ? " active" : ""),
+        type: "button",
+        textContent: d.label,
+      });
+      item.addEventListener("click", () => {
+        deviceMenu.hidden = true;
+        histDevice = d.key;
+        buildDevicePicker();
+        loadDeviceHistory();
+      });
+      rows.push(item);
+    }
+    list.replaceChildren(...rows);
+    if (!shown.length) {
+      list.append(Object.assign(document.createElement("div"),
+        { className: "device-none", textContent: t("hist.device.nomatch") }));
+    }
+    return shown;
+  };
+
+  search.addEventListener("input", render);
+  search.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { deviceMenu.hidden = true; return; }
+    // Enter takes the only thing left, which is what typing an address is for
+    if (event.key === "Enter") {
+      const first = list.querySelector("button");
+      if (first) first.click();
+    }
+  });
+
+  deviceMenu.replaceChildren(search, list);
+  render();
+  // Placed against the room there actually is: the picker sits well down the
+  // page, and a menu of several hundred devices opened downwards ran off the
+  // bottom of the window with no way to reach the end of it.
+  const rect = button.getBoundingClientRect();
+  const below = window.innerHeight - rect.bottom - 12;
+  const above = rect.top - 12;
+  // Down when there is room for a useful number of rows, up when there is not:
+  // eight visible entries out of several hundred is a peephole, and the space
+  // above the picker is usually the larger of the two.
+  const up = below < 320 && above > below;
+  deviceMenu.style.maxHeight = Math.min(up ? above : below, window.innerHeight * 0.6) + "px";
+  deviceMenu.style.left = Math.max(Math.min(rect.left, window.innerWidth - 280), 8) + "px";
+  deviceMenu.style.minWidth = Math.max(rect.width, 260) + "px";
+  deviceMenu.hidden = false;
+  deviceMenu.style.top = up
+    ? Math.max(rect.top - 6 - deviceMenu.offsetHeight, 8) + "px"
+    : rect.bottom + 6 + "px";
+  search.focus();
+}
+
+async function loadDeviceHistory() {
+  buildDevicePicker();
+  const note = $("#hist-device-empty");
+  if (!histDevice) {
+    if (note) note.hidden = false;
+    histDeviceChart.draw([], DEFAULT_SERIES);
+    return;
+  }
+  const [kind, id] = [histDevice.slice(0, histDevice.indexOf(":")), histDevice.slice(histDevice.indexOf(":") + 1)];
+  const query = kind === "peer"
+    ? `kind=peer&key=${encodeURIComponent(id)}`
+    : `kind=host&ip=${encodeURIComponent(id)}`;
+  const names = kind === "peer"
+    ? [`peer|${id}|down`, `peer|${id}|up`]
+    : [`${id}|down`, `${id}|up`];
+  const data = await fetchRange(query);
+  if (!data || !data.available) return;
+  const use = [[names[0]], [names[1]]];
+  const { points, peaks } = mergeSeries(data, use);
+  // one point is a device the store has only just met, and one point draws no
+  // line: the note has to speak for it as well as for none at all
+  if (note) note.hidden = points.length >= 2;
+  const [drawn, drawnPeaks] = foldToWidth($("#hist-device-chart"), points, peaks);
+  histDeviceChart.draw(drawn, DEFAULT_SERIES, drawnPeaks, { from: data.from, to: data.to });
+  legendInto($("#hist-device-legend"), DEFAULT_SERIES.map((s) => ({ ...s, label: t(s.labelKey) })));
+
+  // Both directions share one scale, and on most devices they differ by one or
+  // two orders of magnitude: the smaller line lies along the axis and reads as
+  // an empty chart. The figures say what the flat line cannot — that the device
+  // did three kilobits, not nothing.
+  const figures = $("#hist-device-figures");
+  if (figures) {
+    const parts = [];
+    for (const [rows, key] of [[data.series[names[0]] || [], "top.down"],
+                               [data.series[names[1]] || [], "top.up"]]) {
+      if (!rows.length) continue;
+      const avg = rows.reduce((sum, r) => sum + r[1], 0) / rows.length;
+      const peak = Math.max(...rows.map((r) => r[2]));
+      const [av, au] = fmtBits(avg);
+      const [pv, pu] = fmtBits(peak);
+      parts.push(`${t(key)} ${av} ${au} · ${t("tip.peak")} ${pv} ${pu}`);
+    }
+    figures.textContent = parts.join("   ");
+  }
+}
+
+
 function renderChartLegend(series, pickable = false) {
   const box = $("#chart-legend");
   if (!box) return;
@@ -1160,6 +1875,13 @@ function renderChartLegend(series, pickable = false) {
 
 const mainChart = timeChart($("#main-chart"), $("#chart-tip"));
 const histoChart = timeChart($("#histo-chart"), $("#histo-tip"));
+// the firewall's own readings are percentages, so they get their own axis
+// the History section: traffic and one device in bits, the firewall in per cent
+const histNetChart = timeChart($("#hist-net"), $("#hist-net-tip"));
+const histSysChart = timeChart($("#hist-sys"), $("#hist-sys-tip"), { unit: "percent" });
+const histDiskChart = timeChart($("#hist-disk"), $("#hist-disk-tip"),
+                                { unit: "percent", zoom: true });
+const histDeviceChart = timeChart($("#hist-device-chart"), $("#hist-device-tip"));
 
 /* ---------- backend polling ---------- */
 
@@ -1195,6 +1917,11 @@ async function poll() {
     $("#poll-int").textContent = String(data.poll_seconds || 2);
     $("#mock-badge").hidden = !data.mock;
     if (data.demo && !state.demo) { state.demo = true; applyDemoMode(); }
+    if (Boolean(data.history) !== state.history) {
+      state.history = Boolean(data.history);
+      applyHistoryNav();
+      if (state.history && currentRange() !== "live") setRange(currentRange());
+    }
     const ver = $("#side-version");
     if (ver && data.version && ver.textContent !== data.version) {
       ver.textContent = data.version;
@@ -1409,7 +2136,11 @@ async function loadSystem() {
     if (!res.ok) return;
     const data = await res.json();
     const card = $("#sys-card");
+    const moved = card.hidden !== !data.available;
     card.hidden = !data.available;
+    // The card arrives a moment after the page does; the chart belongs in it
+    // once it is here, and in a card of its own while it is not.
+    if (moved) applyCharts();
     if (data.available) {
       lastSystem = data.metrics || {};
       renderSystem(lastSystem);
@@ -3315,15 +4046,21 @@ function switchView(name) {
     if (item.dataset.view) item.classList.toggle("active", item.dataset.view === name);
   }
   $("#view-hosts").hidden = name !== "hosts";
+  $("#view-history").hidden = name !== "history";
   $("#view-wg").hidden = name !== "wg";
   $("#view-blocked").hidden = name !== "blocked";
   $("#view-rules").hidden = name !== "rules";
   $("#view-settings").hidden = name !== "settings";
   closeDetail(); // the detail panel belongs to one section
+  if (historyTimer) { clearInterval(historyTimer); historyTimer = null; }
   if (wgTimer) { clearInterval(wgTimer); wgTimer = null; }
   if (rulesTimer) { clearInterval(rulesTimer); rulesTimer = null; }
   if (blockedTimer) { clearInterval(blockedTimer); blockedTimer = null; }
-  if (name === "blocked") {
+  if (name === "history") {
+    // the peers are needed for the device picker and are not polled otherwise
+    if (!state.wgList) loadWg();
+    loadHistoryView();
+  } else if (name === "blocked") {
     loadBlocked();
     blockedTimer = setInterval(loadBlocked, 10000);
   } else if (name === "wg") {
@@ -3362,7 +4099,7 @@ function fillClientSettings() {
   $("#set-lang").value = lang;
   $("#set-theme").value = document.documentElement.dataset.theme || "system";
   $("#set-units").value = rateUnit;
-  $("#set-chart").checked = !$("#main-chart-wrap").hidden;
+  $("#set-chart").checked = chartsShown();
   $("#set-kill-confirm").checked = killConfirm;
   $("#set-timefmt").value = timeFormat;
   $("#set-nav").checked = document.body.classList.contains("nav-collapsed");
@@ -3640,19 +4377,24 @@ function initSettingsView() {
     else localStorage.setItem("statedash-theme", value);
     mainChart.redraw();
     histoChart.redraw();
+    redrawHistoryCharts();
     render();
   });
   $("#set-units").addEventListener("change", (e) => {
     rateUnitSelect.value = e.target.value;
     rateUnitSelect.dispatchEvent(new Event("change"));
   });
-  $("#set-chart").addEventListener("change", (e) => applyChartHidden(!e.target.checked));
+  $("#set-chart").addEventListener("change", (e) => {
+    localStorage.setItem("statedash-charts", e.target.checked ? "1" : "0");
+    applyCharts();
+  });
   $("#set-timefmt").addEventListener("change", (e) => {
     timeFormat = e.target.value;
     localStorage.setItem("statedash-time-format", timeFormat);
     render();                       // the table and charts pick up the new format
     mainChart.redraw();
     histoChart.redraw();
+    redrawHistoryCharts();
     if (state.wgList) renderWg(state.wgList);
   });
   $("#set-kill-confirm").addEventListener("change", (e) => {
@@ -3779,7 +4521,7 @@ function applyNavCollapsed(collapsed) {
   document.body.classList.toggle("nav-collapsed", collapsed);
   collapseBtn.title = t(collapsed ? "nav.expand.title" : "nav.collapse.title");
   // once the width animation ends, redraw the charts for the new size
-  setTimeout(() => { mainChart.redraw(); histoChart.redraw(); }, 180);
+  setTimeout(() => { mainChart.redraw(); histoChart.redraw(); redrawHistoryCharts(); }, 180);
 }
 
 collapseBtn.addEventListener("click", () => {
@@ -4160,14 +4902,69 @@ updateSortIndicators();
 
 const chartToggle = $("#chart-toggle");
 const chartWrap = $("#main-chart-wrap");
-function applyChartHidden(hidden) {
-  chartWrap.hidden = hidden;
-  chartToggle.textContent = t(hidden ? "chart.show" : "chart.hide");
-  localStorage.setItem("statedash-chart-hidden", hidden ? "1" : "0");
-  if (!hidden) mainChart.redraw();
+/**
+ * The throughput chart, folded into the Firewall card.
+ *
+ * It sits under the tiles and opens from the button in that card's head, so one
+ * card carries how the machine is doing and how much is going through it. When
+ * the Firewall card is not there — an installation without the Lobby: Dashboard
+ * privilege has none — the chart moves into a card of its own with the same
+ * button, rather than disappearing with the card it was leaning on.
+ *
+ * The button is always in a card head, never inside what it hides: putting it
+ * inside once left the chart with no way back.
+ */
+function chartsShown() {
+  return localStorage.getItem("statedash-charts") !== "0";
 }
-chartToggle.addEventListener("click", () => applyChartHidden(!chartWrap.hidden));
-if (localStorage.getItem("statedash-chart-hidden") === "1") applyChartHidden(true);
+
+function chartSlot() {
+  const sysCard = $("#sys-card");
+  const inFirewall = sysCard && !sysCard.hidden;
+  return {
+    slot: $(inFirewall ? "#sys-chart-slot" : "#chart-card-slot"),
+    button: $(inFirewall ? "#chart-toggle" : "#chart-toggle-alt"),
+    ownCard: !inFirewall,
+  };
+}
+
+function applyCharts() {
+  const on = chartsShown();
+  const { slot, button, ownCard } = chartSlot();
+  const card = $("#chart-card");
+  const block = $("#chart-block");
+
+  if (card) card.hidden = !ownCard;
+  // the legend and the heading go where the chart goes; they are one block
+  if (slot && block && block.parentNode !== slot) slot.appendChild(block);
+  if (block) block.hidden = !on;
+  // inside the Firewall card the block names itself; in a card of its own the
+  // card's own heading already does, and two would be one too many
+  const title = $("#chart-block-title");
+  if (title) title.hidden = ownCard;
+
+  for (const [el, mine] of [[$("#chart-toggle"), button === $("#chart-toggle")],
+                            [$("#chart-toggle-alt"), button === $("#chart-toggle-alt")]]) {
+    if (!el) continue;
+    el.hidden = !mine;
+    el.textContent = t(on ? "chart.hide" : "chart.show");
+    el.title = t("chart.toggle.title");
+    el.classList.toggle("active", on);
+  }
+
+  const checkbox = $("#set-chart");
+  if (checkbox) checkbox.checked = on;
+  if (on) mainChart.redraw();
+}
+
+function toggleCharts() {
+  localStorage.setItem("statedash-charts", chartsShown() ? "0" : "1");
+  applyCharts();
+}
+for (const id of ["#chart-toggle", "#chart-toggle-alt"]) {
+  const button = $(id);
+  if (button) button.addEventListener("click", toggleCharts);
+}
 
 // The same control as the chart above, sharing its wording. On a firewall nobody
 // is worried about, the tiles are a row of figures that never moves, and the
@@ -4176,7 +4973,7 @@ const sysToggle = $("#sys-toggle");
 const sysTiles = $("#sys-tiles");
 function applySysHidden(hidden) {
   sysTiles.hidden = hidden;
-  sysToggle.textContent = t(hidden ? "chart.show" : "chart.hide");
+  sysToggle.textContent = t(hidden ? "sys.tiles.show" : "sys.tiles.hide");
   localStorage.setItem("statedash-sys-hidden", hidden ? "1" : "0");
 }
 sysToggle.addEventListener("click", () => applySysHidden(!sysTiles.hidden));
@@ -4205,11 +5002,14 @@ function applyLang(next) {
   // a page that has half changed.
   if (lastSystem) renderSystem(lastSystem);
   if (!$("#view-settings").hidden) loadSettings();
-  applyChartHidden(chartWrap.hidden);
   applySysHidden(sysTiles.hidden);
+  buildRangePicker();
+  applyCharts();
+  if (historyOpen()) loadHistoryView();
   applyNavCollapsed(document.body.classList.contains("nav-collapsed"));
   mainChart.redraw();
   histoChart.redraw();
+  redrawHistoryCharts();
 }
 
 const LANGS = [["ru", "Русский"], ["en", "English"]];
@@ -4277,6 +5077,7 @@ $("#theme-btn").addEventListener("click", () => {
   localStorage.setItem("statedash-theme", next);
   mainChart.redraw();
   histoChart.redraw();
+  redrawHistoryCharts();
   render();
   if (lastSystem) renderSystem(lastSystem);  // bar colours come from the theme
 });
@@ -4285,6 +5086,7 @@ let fmapResizeTimer = null;
 new ResizeObserver(() => {
   mainChart.redraw();
   histoChart.redraw();
+  redrawHistoryCharts();
   // the diagram computes its layout from the container width — rebuild it after a resize
   clearTimeout(fmapResizeTimer);
   fmapResizeTimer = setTimeout(() => {
@@ -4294,14 +5096,16 @@ new ResizeObserver(() => {
 systemDark.addEventListener("change", () => {
   mainChart.redraw();
   histoChart.redraw();
+  redrawHistoryCharts();
   render();
   if (lastSystem) renderSystem(lastSystem);  // bar colours come from the theme
 });
 
 applyStaticLang();
 applyRateUnitLabels();
-applyChartHidden(chartWrap.hidden);
 applySysHidden(sysTiles.hidden);
+buildRangePicker();
+applyCharts();
 poll();
 // Polled from the start rather than when a view is opened: the card sits on
 // the page that loads first, and it stays hidden until the answer says the
