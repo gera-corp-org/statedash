@@ -1002,3 +1002,66 @@ body.demo #view-settings :disabled { opacity: .6; }
 @media (prefers-reduced-motion: reduce) {
   .sys-meter i { transition: none; }
 }
+
+/* the period picker in the top bar, beside the interface, language and theme
+   controls — it governs charts on more than one view, so it belongs where every
+   view can reach it */
+.range-picker { height: 30px; font-size: 12px; min-width: 104px; }
+.range-menu { display: flex; flex-direction: column; gap: 1px; }
+.range-item {
+  border: none; background: none; cursor: pointer; font: inherit; font-size: 13px;
+  color: var(--text-secondary); padding: 6px 10px; border-radius: 6px;
+  white-space: nowrap; text-align: left;
+}
+.range-item:hover { background: var(--hover); color: var(--text-primary); }
+.range-item.active { background: var(--select); color: var(--text-primary); font-weight: 600; }
+
+/* shown when a stored range reaches back further than the store has been running */
+.chart-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 13px; text-align: center; padding: 0 24px;
+}
+/* the peak inside a bucket, beside the average it is drawn from */
+.tip-peak { color: var(--text-muted); }
+
+/* the button is a toggle, so it says which way it is set */
+.link-btn.active { color: var(--series-down); font-weight: 600; }
+
+/* the histogram tab carries its own period picker, since the charts above it
+   may be put away while this one is on screen */
+.histo-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* the History section */
+.hist-device { height: 30px; font-size: 13px; min-width: 200px; max-width: 320px; }
+.device-menu { overflow: hidden; }
+.device-search { width: 100%; margin-bottom: 6px; }
+.device-list { display: flex; flex-direction: column; gap: 1px; overflow-y: auto; flex: 1; min-height: 0; }
+.device-group {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text-muted); padding: 8px 10px 4px;
+}
+.device-group:first-child { padding-top: 2px; }
+.device-none { color: var(--text-muted); font-size: 13px; padding: 8px 10px; }
+#view-history .chart-wrap { height: 220px; }
+/* the disk moves by per cent a month, so it gets less room and its own axis */
+#view-history .hist-disk-wrap { height: 130px; }
+
+/* the disk, folded into the Firewall card behind its own button */
+
+/* where the throughput chart hangs — under the Firewall tiles, or in its own
+   card when there is no Firewall card to hang under */
+.chart-slot:empty { display: none; }
+
+/* legend and chart as one block, the legend right above the lines it names */
+.chart-block { display: flex; flex-direction: column; gap: 6px; }
+#sys-chart-slot .chart-block { margin-top: 14px; border-top: 1px solid var(--grid); padding-top: 12px; }
+.chart-block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.chart-block-title { font-size: 14px; font-weight: 650; color: var(--text-primary); }
+.chart-legend-row { justify-content: flex-end; }
+
+/* the device's figures beside its picker: a line pinned to the axis is honest
+   but mute, and most devices send far more one way than the other */
+.hist-device-figures { color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
+/* Four figures on one line need about 380px, which a phone does not have: the
+   last of them was being cut off at the edge rather than moving down. */
+@media (max-width: 600px) { .hist-device-figures { white-space: normal; } }

@@ -24,6 +24,11 @@ TLS_VERIFY = _bool("TLS_VERIFY", "0")
 DIRECTION_SWAP = _bool("DIRECTION_SWAP", "0")
 
 # Demo mode: runs without OPNsense
+# Where the long-term history lives. Empty means "beside settings.json",
+# which is the mounted volume when there is one. Without a writable path
+# the store switches itself off and only the live view remains.
+HISTORY_PATH = os.environ.get("HISTORY_PATH", "")
+
 MOCK = _bool("MOCK", "0")
 # A public demonstration: everything can be looked at, nothing can be changed.
 # Without it the first visitor to an instance with no password set can give it

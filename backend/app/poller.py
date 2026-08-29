@@ -4,13 +4,14 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 import logging
+import os
 import re
 from urllib.parse import urlparse
 import time
 from collections import deque
 from dataclasses import dataclass, field
 
-from . import config, settings
+from . import config, history as history_store, settings
 
 log = logging.getLogger("poller")
 
@@ -527,6 +528,10 @@ class Tracker:
         # totals, because a host reachable on two of them is counted in each
         self.iface_totals: dict[str, deque] = {}
         self.last_poll_ok: float = 0.0
+        # Long-term history. Falls back to doing nothing when there is no
+        # writable path, which is what an installation without a volume has.
+        path = config.HISTORY_PATH or os.path.join(os.path.dirname(settings.PATH), "history.db")
+        self.history = history_store.History(path)
         # when the traffic records were last read, so the totals can be
         # integrated over the interval that actually passed
         self.last_traffic_poll: float = 0.0
@@ -728,6 +733,24 @@ class Tracker:
                 self.iface_totals[name] = series
             series.append((now, down, up))
 
+        # Long-term history. Everything goes to both shelves — the store decides
+        # from the kind how long each is kept, and a device's minutes are kept
+        # two days rather than a week. Buckets are folded in memory and written
+        # when they close, so this costs one insert a minute per series rather
+        # than one per poll.
+        store = self.history
+        if store.available:
+            total = self.totals[-1]
+            store.add("agg", "net|down", total[1], now)
+            store.add("agg", "net|up", total[2], now)
+            for name, (down, up) in iface_sums.items():
+                store.add("agg", f"iface|{name}|down", down, now)
+                store.add("agg", f"iface|{name}|up", up, now)
+            for host in seen.values():
+                store.add("host", f"{host.ip}|down", host.bps_down, now)
+                store.add("host", f"{host.ip}|up", host.bps_up, now)
+            store.commit(now)
+
     async def _enrich_loop(self) -> None:
         # give the poller time to collect hosts so names resolve on the first pass
         await asyncio.sleep(settings.get("poll_seconds") * 2)
@@ -831,6 +854,21 @@ class Tracker:
                 )
                 self.system = _system_reading(cpu, memory, swap, temps, mbuf, disk, states)
                 self.system_error = ""
+                # The tiles show a moment; this keeps the year. Only the
+                # percentage of each reading is worth keeping — the byte counts
+                # behind it are a property of the hardware, not of the day.
+                store = self.history
+                if store.available:
+                    now = time.time()
+                    for key, reading in self.system.items():
+                        if not reading:
+                            continue
+                        value = reading.get("pct")
+                        if value is None:
+                            value = reading.get("total", reading.get("value"))
+                        if value is not None:
+                            store.add("agg", f"sys|{key}", float(value), now)
+                    store.commit(now)
             except Exception as exc:
                 status = getattr(getattr(exc, "response", None), "status_code", None)
                 if status == 403:
@@ -898,6 +936,16 @@ class Tracker:
                     peer["tunnel_ip"] = _first_ipv4(peer.get("allowed_ips") or "")
                     history = self.wg_history.setdefault(key, deque(maxlen=settings.get("history_points")))
                     history.append((round(now), round(peer["rx_bps"]), round(peer["tx_bps"])))
+                    # The same series in the store, so a peer's chart reaches as
+                    # far back as a host's. It is filed under the host rules — an
+                    # hourly point kept five weeks — because a peer comes and
+                    # goes the way a device does. rx is what the firewall
+                    # received from the client, which is that client's upload.
+                    if self.history.available:
+                        self.history.add("host", f"peer|{key}|down", peer["tx_bps"], now)
+                        self.history.add("host", f"peer|{key}|up", peer["rx_bps"], now)
+                if self.history.available:
+                    self.history.commit(now)
                 self.wg_peers = peers
                 self.wg_error = ""
                 self.wg_ts = now
@@ -1002,6 +1050,7 @@ class Tracker:
             "ifaces": settings.get("ifaces"),
             "mock": config.MOCK,
             "demo": config.DEMO,
+            "history": self.history.available,
             "version": config.VERSION,
             "error": self.last_error if now - self.last_poll_ok > settings.get("poll_seconds") * 3 else "",
             "firewall_ips": sorted(self.firewall_ips),

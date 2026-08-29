@@ -47,7 +47,11 @@ demo: false
 # still works, but a password set through it does not survive.
 persistence:
   enabled: true
-  size: 64Mi
+  # Settings are a few kilobytes; the rest is the long-term history, which a
+  # month of it fills to under 15 MB on a busy network. Raising this on an
+  # existing release does not resize the volume — the claim has to be expanded,
+  # and only if the storage class allows.
+  size: 128Mi
   accessMode: ReadWriteOnce
   storageClass: ""
   existingClaim: ""

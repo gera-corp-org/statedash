@@ -60,8 +60,8 @@ The keys inside must be named `OPNSENSE_KEY` and `OPNSENSE_SECRET`.
 | `mock` | `false` | Generated data instead of a firewall. |
 | `mockHosts` | `0` | Size of the invented network; 0 keeps the small fixed set. |
 | `demo` | `false` | Public demonstration: everything visible, nothing writable. |
-| `persistence.enabled` | `true` | Keep settings.json across restarts. |
-| `persistence.size` | `64Mi` | Claim size; the file is a few kilobytes. |
+| `persistence.enabled` | `true` | Keep settings.json and the history across restarts. |
+| `persistence.size` | `128Mi` | Claim size: settings are tiny, the month of history is most of it. |
 | `persistence.existingClaim` | `""` | Use a claim you made yourself. |
 | `ingress.enabled` | `false` | Standard ingress block. |
 | `networkPolicy.enabled` | `false` | Egress policy allowing DNS and `egressCIDRs`. |
