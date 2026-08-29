@@ -32,19 +32,6 @@ language and units are yours and do work.
 - Overall throughput chart for the last 15 minutes with a crosshair.
 - Refreshes every 2 seconds.
 
-**Periods.** A picker above the chart, from five minutes to a month. All of them
-are read from a SQLite file beside `settings.json` — one point a minute kept a
-week, one an hour kept five weeks, and per device two days of minutes beside the
-same five weeks of hours. Which shelf answers is decided by what it actually
-holds for the window asked about, so a store that has been running ten minutes
-still draws a month-long view from the only points it has. No answer carries
-more than a thousand points per series: a chart is about that wide in pixels,
-and the rest would cross the network only to be discarded. A month is as far back as it goes; the extra week is so a month-long view
-is full at both ends. Each point carries the average over its bucket and the
-peak within it, because an hour of averages hides the burst that made the hour
-worth looking at: the line draws the average and the tooltip names the peak.
-Under 15 MB on a busy network.
-
 **Firewall tiles**, above the chart: CPU, memory, swap, temperature, network
 buffers, pf states and the fullest filesystem — so a busy firewall can be told
 apart from a busy network without opening a second tab. Each bar walks from green
@@ -59,6 +46,48 @@ temperature sensors OPNsense can read, shows neither rather than showing zero.
 The CPU figure is for the whole machine rather than per core — that is all the
 endpoint offers. The readings match what OPNsense shows on its own dashboard;
 network buffers count clusters in use against the maximum, as it does.
+
+### History
+
+Everything above is the last quarter of an hour, held in memory and lost with
+the container. This section is what outlives it: one picker, from five minutes
+to a month, and four charts that follow it — throughput per interface, the
+firewall's own readings, the disk, and one device at a time.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/statedash-history-dark.png">
+  <img alt="history" src="docs/statedash-history.png">
+</picture>
+
+**Where it comes from.** A SQLite file beside `settings.json`, or wherever
+`HISTORY_PATH` points. Samples are folded into fixed buckets as they arrive and
+written when a bucket closes, so nothing is stored at the rate it was polled.
+Two shelves — one point a minute kept a week, one an hour kept five weeks, and
+per device two days of minutes beside the same five weeks of hours. Which shelf
+answers is decided by what it holds for the window asked about, so a store that
+has been running ten minutes still draws a month-long view from the points it
+has. A month is as far back as it goes; the extra week is so a month-long view
+is full at both ends. Under 15 MB on a busy network.
+
+**Averages and peaks.** Each point carries both, because an hour of averages
+hides the burst that made the hour worth looking at. The line draws the average
+and the tooltip names the peak.
+
+**One axis for all four.** It is the period chosen, not the extent of each
+chart's own data, so a device seen twenty minutes ago does not fill the same
+width as a day of throughput. Where there is no history there is blank space.
+The disk is the exception that proves it: filling up is measured in per cent a
+month, so it gets an axis fitted to its own range rather than one anchored at
+zero, where a month of it would be a straight line.
+
+**Picking a device.** Five weeks on a real firewall is not a list of your
+devices — one held 466 addresses for 19 live hosts, the rest being the far ends
+of connections that passed through once. The list is searchable by name and
+address, and puts VPN peers and what is on the network now above everything
+else.
+
+Without somewhere writable the store switches itself off, this section leaves
+the menu, and the rest carries on. A read-only filesystem is not an error.
 
 ### Host details
 
