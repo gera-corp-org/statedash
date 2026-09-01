@@ -4,6 +4,21 @@ Notable changes per release. Versions follow [semantic versioning](https://semve
 the major number changes when an existing installation needs manual work to keep
 running.
 
+## 1.8.2 — 2026-09-01
+
+### Fixed
+
+- **Two high and ten medium advisories against the image, all of them somebody
+  else's code.** Eight were OpenSSL — `libcrypto3` and `libssl3` at 3.5.7-r0,
+  fixed in 3.5.8-r0 — and closed by nothing more than a rebuild: the base is
+  pinned to an Alpine minor, not to a patch level, precisely so a rebuild picks
+  these up. The other four were `pip`, which the runtime image had no use for.
+  Dependencies are installed in the build stage and arrive as `/deps` on
+  `PYTHONPATH`, so pip is now deleted from the final image: four advisories
+  gone, and one fewer way to pull code into a container that should not be
+  fetching any. Scanned before and after with Trivy — 2 high and 10 medium
+  become none.
+
 ## 1.8.0 — 2026-08-29
 
 ### Added
