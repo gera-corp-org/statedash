@@ -10,7 +10,7 @@ type: application
 #
 # The release workflow overrides both from the tag; the values here are what a
 # local `helm package` produces.
-version: 1.8.0
+version: 1.8.1
 appVersion: "1.8.0"
 
 home: https://github.com/gera-corp-org/statedash
@@ -42,7 +42,15 @@ annotations:
       url: https://github.com/gera-corp-org/statedash/blob/master/CHANGELOG.md
   artifacthub.io/images: |
     - name: statedash
-      image: ghcr.io/gera-corp-org/statedash:1.7.3
+      image: ghcr.io/gera-corp-org/statedash:1.8.0
+  # The chart is signed with cosign on release; this is the public half, so a
+  # download can be checked against it:
+  #   cosign verify --key cosign.pub ghcr.io/gera-corp-org/charts/statedash:VERSION
+  # The fingerprint is the SHA-256 of cosign.pub itself — cosign keys have no
+  # fingerprint of their own the way a PGP key does.
+  artifacthub.io/signKey: |
+    fingerprint: 17554f1f84f3e2b5b77e1d6d321d3b8f2034e1eebbf97393e877423127fa238d
+    url: https://raw.githubusercontent.com/gera-corp-org/statedash/master/charts/statedash/cosign.pub
   artifacthub.io/maintainers: |
     - name: gera-corp
       email: exandore@gmail.com

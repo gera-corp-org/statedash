@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Statedash chart values",
+  "description": "Helm validates values against this before rendering, so a typo or a wrong type is refused at install time with the path to it rather than at runtime with a stack trace. Artifact Hub renders it as a table beside the chart. Fields Kubernetes itself defines — annotations, tolerations, affinity — are left open on purpose: repeating their schemas here would only date.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": {
+          "type": "string",
+          "description": "Empty means the chart's appVersion, which is the pairing the release process guarantees."
+        },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": { "name": { "type": "string" } },
+        "required": ["name"]
+      }
+    },
+    "opnsense": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "Web address of the firewall, scheme included. Empty is allowed: the credentials can be entered in the interface instead, or left out entirely when mock is on.",
+          "pattern": "^(https?://.+)?$"
+        },
+        "interfaces": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Comma-separated, named as the API names them: lan, opt1, wireguard.",
+          "pattern": "^[A-Za-z0-9_]+(,[A-Za-z0-9_]+)*$"
+        },
+        "tlsVerify": { "type": "boolean" },
+        "key": { "type": "string" },
+        "secret": { "type": "string" },
+        "existingSecret": {
+          "type": "string",
+          "description": "Name of a secret holding OPNSENSE_KEY and OPNSENSE_SECRET. Set this instead of key and secret to keep them out of the values."
+        }
+      }
+    },
+    "polling": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Seconds between rounds. Faster costs the firewall more; the API is the same one its own dashboard uses.",
+      "properties": {
+        "speed": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "states": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "names": { "type": "integer", "minimum": 1, "maximum": 86400 }
+      }
+    },
+    "directionSwap": {
+      "type": "boolean",
+      "description": "Set when download and upload come out the wrong way round, which depends on which side of the interface the firewall counts."
+    },
+    "mock": {
+      "type": "boolean",
+      "description": "Invent a network instead of polling one. No firewall is contacted at all."
+    },
+    "mockHosts": { "type": "integer", "minimum": 0, "maximum": 5000 },
+    "demo": {
+      "type": "boolean",
+      "description": "Read-only: settings are shown but cannot be changed, so a public instance cannot be locked by the first visitor."
+    },
+    "persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Settings are a few kilobytes; the rest is the long-term history. Without a writable path the store switches itself off and only the live view remains, which is not an error.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "size": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?(E|P|T|G|M|k|Ei|Pi|Ti|Gi|Mi|Ki)?$"
+        },
+        "accessMode": {
+          "type": "string",
+          "enum": ["ReadWriteOnce", "ReadWriteMany", "ReadWriteOncePod"]
+        },
+        "storageClass": { "type": "string" },
+        "existingClaim": { "type": "string" }
+      }
+    },
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "One, and only one. Each replica polls the firewall on its own and keeps its own history; a second would double the load and disagree with the first."
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "annotations": { "type": "object" }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "className": { "type": "string" },
+        "annotations": { "type": "object" },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "host": { "type": "string", "minLength": 1 },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": { "type": "string", "minLength": 1 },
+                    "pathType": {
+                      "type": "string",
+                      "enum": ["Exact", "Prefix", "ImplementationSpecific"]
+                    }
+                  },
+                  "required": ["path"]
+                }
+              }
+            },
+            "required": ["host"]
+          }
+        },
+        "tls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "secretName": { "type": "string" },
+              "hosts": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "resources": { "type": "object" },
+    "podSecurityContext": { "type": "object" },
+    "securityContext": { "type": "object" },
+    "livenessProbe": { "type": "object" },
+    "readinessProbe": { "type": "object" },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string" },
+        "annotations": { "type": "object" }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Egress is denied except DNS and the addresses listed, so a compromised container cannot reach the rest of the network. The firewall's own address has to be among them.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "egressCIDRs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[12][0-9]|3[0-2])$|^[0-9a-fA-F:]+/[0-9]{1,3}$"
+          }
+        }
+      }
+    },
+    "podAnnotations": { "type": "object" },
+    "podLabels": { "type": "object" },
+    "nodeSelector": { "type": "object" },
+    "tolerations": { "type": "array" },
+    "affinity": { "type": "object" },
+    "extraEnv": {
+      "type": "array",
+      "description": "Passed to the container as they stand, for a setting the chart does not name.",
+      "items": {
+        "type": "object",
+        "properties": { "name": { "type": "string" } },
+        "required": ["name"]
+      }
+    }
+  }
+}
