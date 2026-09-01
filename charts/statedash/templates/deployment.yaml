@@ -5,11 +5,23 @@ metadata:
   labels: {{- include "statedash.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
-  {{- if .Values.persistence.enabled }}
-  # a ReadWriteOnce volume cannot be handed over while the old pod still holds it
+  # Always written out, both branches, and that is the point. Leaving it off
+  # when persistence is disabled let the API server default `rollingUpdate` and
+  # own those fields; turning persistence on later then asked for `Recreate`
+  # while the defaulted `rollingUpdate` stayed behind, which Kubernetes rejects
+  # outright — "may not be specified when strategy type is 'Recreate'". Naming
+  # the fields here makes them ours, so dropping them drops them from the
+  # object. A ReadWriteOnce volume cannot be handed over while the old pod still
+  # holds it, which is why the volume means Recreate at all.
   strategy:
+    {{- if .Values.persistence.enabled }}
     type: Recreate
-  {{- end }}
+    {{- else }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    {{- end }}
   selector:
     matchLabels: {{- include "statedash.selectorLabels" . | nindent 6 }}
   template:

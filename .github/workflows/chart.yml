@@ -90,8 +90,41 @@ jobs:
             app_args=()
           fi
           helm package charts/statedash --version "$version" "${app_args[@]}" -d /tmp
+          # the digest is what gets signed: a tag can be moved, a digest cannot
           helm push "/tmp/statedash-${version}.tgz" \
-            "oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts"
+            "oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts" 2>&1 | tee /tmp/push.log
+          digest=$(grep -oE 'sha256:[0-9a-f]{64}' /tmp/push.log | head -1)
+          if [ -z "$digest" ]; then
+            echo "::error::helm push printed no digest, so there is nothing to sign"
+            exit 1
+          fi
+          echo "digest=$digest" >> "$GITHUB_ENV"
+
+      - name: Install cosign
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/chart-')
+        uses: sigstore/cosign-installer@v4
+
+      # Signed with a key pair rather than keylessly, because that is the shape
+      # Artifact Hub is known to read for an OCI chart: the two signed OCI charts
+      # it lists both publish a public key and name it in artifacthub.io/signKey.
+      # The public half is charts/statedash/cosign.pub, in this repository, so
+      # anyone can check a release against it:
+      #
+      #   cosign verify --key cosign.pub \
+      #     ghcr.io/gera-corp-org/charts/statedash:<version>
+      - name: Sign the chart
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/chart-')
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
+            "${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/statedash@${digest}"
+          # proves the signature is readable with the key we publish, not just
+          # that the command exited zero
+          cosign verify --key charts/statedash/cosign.pub \
+            "${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/statedash@${digest}" > /dev/null
+          echo "signed $digest"
 
       # Also on a manual run: the claim is independent of the chart version, so a
       # correction to it should not need a release nobody asked for.

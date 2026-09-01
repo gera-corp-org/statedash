@@ -67,6 +67,34 @@ The keys inside must be named `OPNSENSE_KEY` and `OPNSENSE_SECRET`.
 | `networkPolicy.enabled` | `false` | Egress policy allowing DNS and `egressCIDRs`. |
 | `resources` | 50m / 128Mi | Requests; the geo database holds about 30 MB of the ~75 MB total. |
 
+## Verifying a release
+
+Every published chart is signed with [cosign](https://github.com/sigstore/cosign).
+The public key is `cosign.pub`, in this directory and inside the packaged chart:
+
+```sh
+cosign verify --key cosign.pub \
+  ghcr.io/gera-corp-org/charts/statedash:1.8.1
+```
+
+A key pair rather than keyless signing, because that is the shape Artifact Hub
+reads for an OCI chart — it is named there in the `artifacthub.io/signKey`
+annotation, whose fingerprint is the SHA-256 of `cosign.pub` itself.
+
+## Values are checked before install
+
+`values.schema.json` is part of the chart, so Helm refuses values that do not
+fit before anything is rendered — with the path to the offending key rather than
+a failure at runtime:
+
+```
+$ helm install statedash ... --set opnsesne.url=https://fw
+Error: values don't meet the specifications of the schema(s):
+- (root): Additional property opnsesne is not allowed
+```
+
+That misspelling used to install cleanly and leave the firewall address empty.
+
 ## Versions
 
 The chart carries the same number as the application it installs: chart 1.3.0
