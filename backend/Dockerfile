@@ -44,7 +44,15 @@ FROM ${BASE}
 RUN addgroup -g 1000 statedash \
  && adduser -u 1000 -G statedash -D -H statedash \
  && mkdir -p /srv/data \
- && chown 1000:1000 /srv/data
+ && chown 1000:1000 /srv/data \
+ # pip is the base image's, not ours: dependencies are installed in the build
+ # stage and arrive as /deps on PYTHONPATH, so nothing here ever calls it. It
+ # was four medium advisories in every scan of a running dashboard, for a tool
+ # the runtime cannot use — and one fewer way to fetch code into a container
+ # that is not supposed to.
+ && rm -rf /usr/local/lib/python3.12/site-packages/pip \
+           /usr/local/lib/python3.12/site-packages/pip-*.dist-info \
+           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.12
 
 WORKDIR /srv
 
